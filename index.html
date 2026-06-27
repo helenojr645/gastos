@@ -9,6 +9,23 @@
 <meta name="apple-mobile-web-app-title" content="Gastos">
 <meta name="theme-color" content="#080c18">
 <title>Gastos</title>
+<link rel="apple-touch-icon" id="ati">
+<script>
+(function(){
+  try{
+    var c=document.createElement('canvas'); c.width=c.height=180;
+    var x=c.getContext('2d');
+    var g=x.createLinearGradient(0,0,180,180);
+    g.addColorStop(0,'#0d1e42'); g.addColorStop(1,'#1661b8');
+    x.fillStyle=g; x.fillRect(0,0,180,180);
+    x.fillStyle='rgba(255,255,255,0.1)';
+    x.beginPath(); x.arc(160,20,90,0,Math.PI*2); x.fill();
+    x.fillStyle='#ffffff'; x.font='bold 90px system-ui,sans-serif';
+    x.textAlign='center'; x.textBaseline='middle'; x.fillText('G',90,96);
+    document.getElementById('ati').href=c.toDataURL('image/png');
+  }catch(e){}
+})();
+</script>
 <style>
 :root {
   --bg:     #080c18;
@@ -368,13 +385,36 @@ async function callAPI(action, data){
   return r.json();
 }
 
+function stripAcc(s){
+  var f='áàãâäéèêëíìîïóòõôöúùûüýçñ', t='aaaaaeeeeiiiioooooouuuuycn', o='';
+  s = String(s).toLowerCase().trim();
+  for(var i=0;i<s.length;i++){ var x=f.indexOf(s[i]); o+=x>=0?t[x]:s[i]; }
+  return o;
+}
+
+function fixCfg(cfg){
+  if(!cfg) return cfg;
+  var fixos = cfg.fixos||[], clean=[];
+  for(var i=0;i<fixos.length;i++){
+    var f=fixos[i], lbl=stripAcc(f.descricao||'');
+    if(lbl.includes('salario dia 15')||lbl==='salario 15'){ cfg.salario15=f.valor; }
+    else if(lbl.includes('salario dia 30')||lbl==='salario 30'){ cfg.salario30=f.valor; }
+    else if(lbl.includes('meta de investimento')){ cfg.metaInvestimento=f.valor; }
+    else { clean.push(f); }
+  }
+  cfg.fixos = clean;
+  cfg.salarioTotal = (cfg.salario15||0)+(cfg.salario30||0);
+  cfg.totalFixos   = clean.reduce(function(s,x){return s+x.valor;},0);
+  return cfg;
+}
+
 async function init(){
   load(true);
   try {
     var res = await callAPI('all');
     if(res.error) throw new Error(res.error);
     D.hist = (res.historico||[]).sort(function(a,b){ return toDate(a.mesAno)-toDate(b.mesAno); });
-    D.cfg  = res.config || D.cfg;
+    D.cfg  = fixCfg(res.config) || D.cfg;
 
     var cur = mesAnoAtual();
     var hasCur = D.hist.some(function(m){ return m.mesAno===cur; });
@@ -387,10 +427,10 @@ async function init(){
     if(D.idx<0) D.idx = D.hist.length-1;
 
     renderResumo(); renderHist(); renderCfg();
-    document.getElementById('dot').style.cssText = 'background:var(--green);box-shadow:0 0 8px var(--green)';
+    document.getElementById('dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00c896;box-shadow:0 0 8px #00c896';
   } catch(e){
     toast('Erro ao carregar: '+e.message,'err');
-    document.getElementById('dot').style.cssText = 'background:var(--red);box-shadow:0 0 8px var(--red)';
+    document.getElementById('dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d';
   }
   load(false);
 }
