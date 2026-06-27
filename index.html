@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gastos">
+  <meta name="theme-color" id="meta-theme-color" content="#0f172a">
+  <title>Controle de Gastos</title>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><text y='.9em' font-size='72' x='14'>💰</text></svg>">
+  <!-- PWA Manifest inline -->
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Controle+de+Gastos%22%2C%22short_name%22%3A%22Gastos%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%233b82f6%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg+xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'+viewBox%3D'0+0+100+100'%3E%3Crect+width%3D'100'+height%3D'100'+rx%3D'22'+fill%3D'%230f172a'%2F%3E%3Ctext+y%3D'.9em'+font-size%3D'72'+x%3D'14'%3E%F0%9F%92%B0%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+
+  <style>
+    /* ── Variáveis de tema ── */
+    :root {
+      --bg:         #0f172a;
+      --surface:    #1e293b;
+      --surface2:   #263348;
+      --border:     #334155;
+      --text:       #f8fafc;
+      --text-2:     #94a3b8;
+      --primary:    #3b82f6;
+      --success:    #22c55e;
+      --danger:     #ef4444;
+      --warning:    #f59e0b;
+      --r:          12px;
+      --nav-h:      64px;
+      --header-h:   56px;
+    }
+    [data-theme="light"] {
+      --bg:         #f1f5f9;
+      --surface:    #ffffff;
+      --surface2:   #f8fafc;
+      --border:     #e2e8f0;
+      --text:       #0f172a;
+      --text-2:     #64748b;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      transition: background .2s, color .2s;
+    }
+
+    /* ── Header ── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+    .logo { font-size: 1.05rem; font-weight: 800; color: var(--primary); letter-spacing: -.02em; }
+    .header-right { display: flex; gap: 4px; }
+
+    /* ── Main ── */
+    main {
+      padding: calc(var(--header-h) + 16px) 16px calc(var(--nav-h) + 20px);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── Bottom nav ── */
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+    .tab {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 3px;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-2); font-size: .68rem; font-weight: 600;
+      letter-spacing: .02em; transition: color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab-icon { font-size: 1.3rem; line-height: 1; }
+    .tab.active { color: var(--primary); }
+
+    /* ── Icon button ── */
+    .btn-icon {
+      background: none; border: none; cursor: pointer;
+      padding: 8px; border-radius: 8px; color: var(--text-2);
+      font-size: 1.1rem; display: flex; align-items: center;
+      transition: background .15s;
+    }
+    .btn-icon:hover { background: var(--border); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: .72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-2); margin-bottom: 6px;
+    }
+    .card-value { font-size: 1.75rem; font-weight: 800; line-height: 1.1; }
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .card-grid .card { margin-bottom: 0; padding: 14px; }
+    .card-grid .card .card-value { font-size: 1.2rem; }
+
+    /* ── Colors ── */
+    .c-success { color: var(--success) !important; }
+    .c-danger   { color: var(--danger) !important; }
+    .c-primary  { color: var(--primary) !important; }
+    .c-warn     { color: var(--warning) !important; }
+    .c-muted    { color: var(--text-2); }
+
+    /* ── Progress bar ── */
+    .prog { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+    .prog-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+
+    /* ── Section label ── */
+    .sect { font-size: .78rem; font-weight: 700; color: var(--text-2); margin: 14px 0 8px; }
+
+    /* ── History list ── */
+    .hist-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 13px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; margin-bottom: 8px;
+      transition: border-color .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hist-item:active { transform: scale(.985); }
+    .hist-item:hover  { border-color: var(--primary); }
+    .hist-month { font-weight: 700; font-size: .95rem; }
+    .hist-detail { font-size: .75rem; color: var(--text-2); margin-top: 2px; }
+    .hist-right  { text-align: right; display: flex; align-items: center; gap: 8px; }
+    .hist-saldo  { font-weight: 800; font-size: .95rem; }
+    .hist-arrow  { color: var(--text-2); font-size: .75rem; }
+
+    /* ── Config form ── */
+    .cfg-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px; margin-bottom: 12px;
+    }
+    .cfg-title {
+      font-size: .8rem; font-weight: 700; color: var(--primary);
+      margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 8px; }
+    .form-row:last-child { margin-bottom: 0; }
+
+    label { display: block; font-size: .75rem; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+
+    input[type="text"], input[type="number"] {
+      width: 100%; background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-size: .95rem; padding: 9px 12px;
+      outline: none; transition: border-color .15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    input:focus { border-color: var(--primary); }
+    input::placeholder { color: var(--text-2); opacity: .6; }
+    .w-100px { width: 100px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 12px 20px; border-radius: 10px; border: none;
+      font-size: .9rem; font-weight: 700; cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { opacity: .9; }
+    .btn-ghost { background: transparent; color: var(--text-2); border: 1.5px solid var(--border); }
+    .btn-danger-ghost { background: transparent; color: var(--danger); border: 1.5px solid rgba(239,68,68,.4); }
+    .btn-block { width: 100%; }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: calc(var(--nav-h) + 16px); right: 16px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--primary); border: none; color: #fff;
+      font-size: 1.7rem; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(59,130,246,.55);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, box-shadow .15s;
+      z-index: 90;
+    }
+    .fab:active { transform: scale(.9); }
+    .fab:hover  { box-shadow: 0 6px 24px rgba(59,130,246,.7); }
+
+    /* ── Modal ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      display: flex; align-items: flex-end;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--r) var(--r) 0 0;
+      padding: 20px 20px 36px; width: 100%;
+      max-height: 92dvh; overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,.72,0,1);
+    }
+    .overlay.open .modal { transform: translateY(0); }
+
+    @media (min-width: 600px) {
+      .overlay { align-items: center; }
+      .modal {
+        border-radius: var(--r); max-width: 480px; margin: auto;
+        transform: translateY(16px) scale(.97);
+      }
+      .overlay.open .modal { transform: none; }
+    }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 800; }
+
+    /* Divider */
+    hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+    /* ── Calc row ── */
+    .calc-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-top: 1px dashed var(--border);
+    }
+    .calc-label { font-size: .82rem; color: var(--text-2); }
+    .calc-val   { font-weight: 700; font-size: .92rem; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: calc(var(--nav-h) + 76px); left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border);
+      padding: 9px 20px; border-radius: 99px;
+      font-size: .82rem; font-weight: 600;
+      z-index: 400; opacity: 0;
+      transition: opacity .2s, transform .2s;
+      white-space: nowrap; pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── States ── */
+    .loading {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 52px 16px; color: var(--text-2); gap: 12px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty {
+      text-align: center; padding: 52px 16px; color: var(--text-2);
+    }
+    .empty-icon  { font-size: 3rem; margin-bottom: 12px; }
+    .empty-title { font-weight: 700; font-size: 1rem; margin-bottom: 4px; color: var(--text); }
+    .empty-sub   { font-size: .82rem; }
+
+    /* ── Setup banner ── */
+    .setup-banner {
+      background: rgba(59,130,246,.1);
+      border: 1px solid rgba(59,130,246,.3);
+      border-radius: var(--r);
+      padding: 14px 16px; margin-bottom: 14px;
+      font-size: .82rem; color: var(--primary); line-height: 1.5;
+    }
+    .setup-banner code {
+      font-family: monospace; font-size: .8rem;
+      background: rgba(59,130,246,.15); padding: 1px 5px; border-radius: 4px;
+    }
+
+    /* ── Trend chip ── */
+    .trend {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: .75rem; font-weight: 700;
+      margin-top: 6px;
+    }
+
+    /* ── Btn row ── */
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-row .btn-primary { flex: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <span class="logo">💰 Gastos</span>
+  <div class="header-right">
+    <button class="btn-icon" id="btn-sync" title="Atualizar">⟳</button>
+    <button class="btn-icon" id="btn-theme" title="Tema">🌙</button>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<main id="root">
+  <div class="loading"><div class="spinner"></div><span>Carregando…</span></div>
+</main>
+
+<!-- ── Bottom nav ── -->
+<nav>
+  <button class="tab active" data-tab="resumo">
+    <span class="tab-icon">📊</span>Resumo
+  </button>
+  <button class="tab" data-tab="historico">
+    <span class="tab-icon">📋</span>Histórico
+  </button>
+  <button class="tab" data-tab="config">
+    <span class="tab-icon">⚙️</span>Config
+  </button>
+</nav>
+
+<!-- ── FAB ── -->
+<button class="fab" id="fab" title="Novo mês">+</button>
+
+<!-- ── Modal mês ── -->
+<div class="overlay" id="overlay-mes">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-mes-title">Novo Mês</span>
+      <button class="btn-icon" id="modal-mes-close">✕</button>
+    </div>
+
+    <form id="form-mes" autocomplete="off">
+      <div style="margin-bottom:12px;">
+        <label>Mês / Ano</label>
+        <input type="text" id="f-mesano" placeholder="ex: Junho/2026" required>
+      </div>
+
+      <div class="card-grid" style="margin-bottom:12px;">
+        <div>
+          <label>Salário recebido (R$)</label>
+          <input type="number" id="f-salario" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div>
+          <label>Fixos + Invest. (R$)</label>
+          <input type="number" id="f-fixos" placeholder="0,00" step="0.01" min="0">
+        </div>
+      </div>
+
+      <div class="sect">Faturas dos cartões</div>
+
+      <div class="card-grid" style="margin-bottom:0;">
+        <div>
+          <label>Nubank</label>
+          <input type="number" class="fatura" id="f-nubank" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div>
+          <label>XP</label>
+          <input type="number" class="fatura" id="f-xp" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div style="margin-top:8px;">
+          <label>BTG</label>
+          <input type="number" class="fatura" id="f-btg" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div style="margin-top:8px;">
+          <label>PIX / Débito</label>
+          <input type="number" class="fatura" id="f-pix" placeholder="0,00" step="0.01" min="0">
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="calc-row">
+        <span class="calc-label">Total faturas</span>
+        <span class="calc-val c-danger" id="calc-faturas">R$ 0,00</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Saldo final</span>
+        <span class="calc-val" id="calc-saldo">R$ 0,00</span>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn-danger-ghost" id="btn-del" style="display:none;">Excluir</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  CONFIGURAÇÃO — cole aqui a URL do Apps Script após o deploy
+// ============================================================
+const API_URL = '';
+// ============================================================
+
+// ── State ──────────────────────────────────────────────────
+const S = {
+  historico:  [],
+  config:     {},
+  tab:        'resumo',
+  editMes:    null,
+  syncing:    false,
+  theme:      localStorage.getItem('gc-theme') || 'dark',
+};
+
+// ── Theme ────────────────────────────────────────────────────
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.getElementById('btn-theme').textContent = t === 'dark' ? '🌙' : '☀️';
+  document.getElementById('meta-theme-color').content = t === 'dark' ? '#0f172a' : '#f1f5f9';
+  localStorage.setItem('gc-theme', t);
+}
+document.getElementById('btn-theme').addEventListener('click', () => {
+  S.theme = S.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(S.theme);
+});
+applyTheme(S.theme);
+
+// ── Formatting ───────────────────────────────────────────────
+const fmt = n => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const saldoClass = n => Number(n) >= 0 ? 'c-success' : 'c-danger';
+
+// ── API ──────────────────────────────────────────────────────
+async function apiFetch(params = {}) {
+  if (!API_URL) return null;
+  const qs = new URLSearchParams(params).toString();
+  const url = qs ? `${API_URL}?${qs}` : API_URL;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function loadData() {
+  try {
+    const data = await apiFetch();
+    if (data && !data.error) {
+      S.historico = data.historico || [];
+      S.config    = data.config    || {};
+      localStorage.setItem('gc-cache', JSON.stringify(data));
+      return true;
+    }
+  } catch (e) {
+    console.warn('API error:', e.message);
+  }
+
+  // fallback: cache
+  try {
+    const c = localStorage.getItem('gc-cache');
+    if (c) {
+      const d = JSON.parse(c);
+      S.historico = d.historico || [];
+      S.config    = d.config    || {};
+      toast('Sem conexão — dados em cache');
+    }
+  } catch (_) {}
+  return false;
+}
+
+async function saveMonth(mes) {
+  if (!API_URL) { toast('Configure API_URL no index.html'); return false; }
+  try {
+    const data = await apiFetch({ action: 'save_mes', data: encodeURIComponent(JSON.stringify(mes)) });
+    if (data && data.success) { await loadData(); return true; }
+    toast('Erro: ' + (data?.error || 'resposta inválida'));
+  } catch (e) { toast('Erro ao salvar: ' + e.message); }
+  return false;
+}
+
+async function saveConfig(cfg) {
+  if (!API_URL) { toast('Configure API_URL no index.html'); return false; }
+  try {
+    const data = await apiFetch({ action: 'save_config', data: encodeURIComponent(JSON.stringify(cfg)) });
+    if (data && data.success) { toast('Configuração salva!'); await loadData(); return true; }
+    toast('Erro: ' + (data?.error || 'resposta inválida'));
+  } catch (e) { toast('Erro ao salvar: ' + e.message); }
+  return false;
+}
+
+// ── Navigation ───────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    S.tab = t.dataset.tab;
+    render();
+  });
+});
+
+function switchTab(tab) {
+  S.tab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  render();
+}
+
+// ── Render dispatcher ────────────────────────────────────────
+function render() {
+  const root = document.getElementById('root');
+  if (S.tab === 'resumo')    root.innerHTML = renderResumo();
+  if (S.tab === 'historico') { root.innerHTML = renderHistorico(); bindHist(); }
+  if (S.tab === 'config')    { root.innerHTML = renderConfig();    bindConfig(); }
+}
+
+// ── Resumo ───────────────────────────────────────────────────
+function renderResumo() {
+  const noUrl = !API_URL;
+  const banner = noUrl ? `<div class="setup-banner">
+    ⚙️ <strong>Setup necessário:</strong> abra o arquivo <code>index.html</code> e preencha
+    a variável <code>API_URL</code> com a URL do Apps Script.
+    Veja o guia <code>SETUP.md</code> para o passo a passo.
+  </div>` : '';
+
+  if (!S.historico.length) {
+    return banner + `<div class="empty">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">Nenhum dado ainda</div>
+      <div class="empty-sub">Toque em <strong>+</strong> para lançar o primeiro mês</div>
+    </div>`;
+  }
+
+  const ult  = S.historico[S.historico.length - 1];
+  const ant  = S.historico.length > 1 ? S.historico[S.historico.length - 2] : null;
+  const sal  = Number(ult.salario)     || 0;
+  const fix  = Number(ult.fixosInvest) || 0;
+  const fat  = Number(ult.totalFaturas)|| 0;
+  const sld  = Number(ult.saldo)       || 0;
+  const pct  = sal > 0 ? Math.min((fix + fat) / sal * 100, 100) : 0;
+  const cor  = pct > 85 ? '#ef4444' : pct > 65 ? '#f59e0b' : '#22c55e';
+  const meta = Number(S.config.metaInvestimento) || 0;
+
+  let trendHtml = '';
+  if (ant) {
+    const diff = sld - (Number(ant.saldo) || 0);
+    const sign = diff >= 0 ? '+' : '';
+    const cls  = diff >= 0 ? 'c-success' : 'c-danger';
+    const arr  = diff >= 0 ? '↑' : '↓';
+    trendHtml  = `<div class="trend ${cls}">${arr} ${sign}${fmt(diff)} vs ${ant.mesAno}</div>`;
+  }
+
+  const metaRow = meta > 0 ? `<div style="font-size:.72rem;color:var(--text-2);margin-top:4px;">${Math.min(fix/meta*100,100).toFixed(0)}% da meta de investimento</div>` : '';
+
+  return banner + `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:.8rem;color:var(--text-2);">Mês atual</span>
+      <span style="font-weight:800;">${ult.mesAno}</span>
+    </div>
+
+    <div class="card" style="border-color:${sld>=0?'rgba(34,197,94,.35)':'rgba(239,68,68,.35)'};">
+      <div class="card-title">Saldo do mês</div>
+      <div class="card-value ${saldoClass(sld)}">${fmt(sld)}</div>
+      ${trendHtml}
+      <div class="prog" style="margin-top:12px;">
+        <div class="prog-fill" style="width:${pct.toFixed(1)}%;background:${cor};"></div>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-2);margin-top:4px;">${pct.toFixed(0)}% do salário comprometido</div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Salário</div>
+        <div class="card-value c-primary">${fmt(sal)}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fixos + Invest.</div>
+        <div class="card-value">${fmt(fix)}</div>
+        ${metaRow}
+      </div>
+    </div>
+
+    <div class="sect">Faturas</div>
+
+    <div class="card-grid">
+      <div class="card"><div class="card-title">Nubank</div><div class="card-value">${fmt(ult.nubank)}</div></div>
+      <div class="card"><div class="card-title">XP</div><div class="card-value">${fmt(ult.xp)}</div></div>
+      <div class="card"><div class="card-title">BTG</div><div class="card-value">${fmt(ult.btg)}</div></div>
+      <div class="card"><div class="card-title">PIX / Débito</div><div class="card-value">${fmt(ult.pixDebito)}</div></div>
+    </div>
+
+    <div class="card" style="padding:12px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="card-title" style="margin:0;">Total faturas</span>
+        <span style="font-weight:800;font-size:1.05rem;" class="c-danger">${fmt(fat)}</span>
+      </div>
+    </div>`;
+}
+
+// ── Histórico ────────────────────────────────────────────────
+function renderHistorico() {
+  if (!S.historico.length) return `<div class="empty">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">Histórico vazio</div>
+    <div class="empty-sub">Meses lançados aparecerão aqui</div>
+  </div>`;
+
+  return [...S.historico].reverse().map(m => `
+    <div class="hist-item" data-m="${m.mesAno}">
+      <div>
+        <div class="hist-month">${m.mesAno}</div>
+        <div class="hist-detail">Faturas ${fmt(m.totalFaturas)} · Salário ${fmt(m.salario)}</div>
+      </div>
+      <div class="hist-right">
+        <span class="hist-saldo ${saldoClass(m.saldo)}">${fmt(m.saldo)}</span>
+        <span class="hist-arrow">›</span>
+      </div>
+    </div>`).join('');
+}
+
+function bindHist() {
+  document.querySelectorAll('.hist-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const mes = S.historico.find(m => m.mesAno === el.dataset.m);
+      if (mes) openEdit(mes);
+    });
+  });
+}
+
+// ── Config ───────────────────────────────────────────────────
+function renderConfig() {
+  const c = S.config;
+  let fixosHtml = '';
+  for (let i = 0; i < 8; i++) {
+    const f = (c.fixos || [])[i] || {};
+    fixosHtml += `<div class="form-row">
+      <input type="text" class="fixo-desc" data-i="${i}" placeholder="Ex: Aluguel, Netflix…" value="${f.descricao||''}">
+      <input type="number" class="fixo-val w-100px" data-i="${i}" placeholder="R$" step="0.01" min="0" value="${f.valor||''}">
+    </div>`;
+  }
+
+  return `
+    <div class="cfg-section">
+      <div class="cfg-title">💵 Salário</div>
+      <div class="card-grid" style="margin-bottom:0;">
+        <div><label>Parcela dia 15</label><input type="number" id="cfg-sal15" value="${c.salario15||''}" placeholder="0,00" step="0.01" min="0"></div>
+        <div><label>Parcela dia 30</label><input type="number" id="cfg-sal30" value="${c.salario30||''}" placeholder="0,00" step="0.01" min="0"></div>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-title">🔒 Gastos Fixos Mensais</div>
+      ${fixosHtml}
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-title">🎯 Meta</div>
+      <label>Meta de investimento mensal</label>
+      <input type="number" id="cfg-meta" value="${c.metaInvestimento||''}" placeholder="0,00" step="0.01" min="0">
+    </div>
+
+    <button class="btn btn-primary btn-block" id="btn-cfg-save">Salvar configuração</button>`;
+}
+
+function bindConfig() {
+  document.getElementById('btn-cfg-save').addEventListener('click', async () => {
+    const fixos = [];
+    for (let i = 0; i < 8; i++) {
+      const d = document.querySelector(`.fixo-desc[data-i="${i}"]`).value.trim();
+      const v = Number(document.querySelector(`.fixo-val[data-i="${i}"]`).value) || 0;
+      if (d) fixos.push({ descricao: d, valor: v });
+    }
+    await saveConfig({
+      salario15:        Number(document.getElementById('cfg-sal15').value) || 0,
+      salario30:        Number(document.getElementById('cfg-sal30').value) || 0,
+      fixos,
+      metaInvestimento: Number(document.getElementById('cfg-meta').value)  || 0,
+    });
+  });
+}
+
+// ── Modal mês ────────────────────────────────────────────────
+function calcModal() {
+  const n = v => Number(document.getElementById(v).value) || 0;
+  const fat = n('f-nubank') + n('f-xp') + n('f-btg') + n('f-pix');
+  const sld = n('f-salario') - n('f-fixos') - fat;
+  document.getElementById('calc-faturas').textContent = fmt(fat);
+  const el = document.getElementById('calc-saldo');
+  el.textContent = fmt(sld);
+  el.className = 'calc-val ' + saldoClass(sld);
+}
+
+function openNew() {
+  S.editMes = null;
+  document.getElementById('modal-mes-title').textContent = 'Novo Mês';
+  document.getElementById('btn-del').style.display = 'none';
+  document.getElementById('form-mes').reset();
+
+  const now = new Date();
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('f-mesano').value = `${meses[now.getMonth()]}/${now.getFullYear()}`;
+
+  const salTot = (S.config.salario15 || 0) + (S.config.salario30 || 0);
+  if (salTot) document.getElementById('f-salario').value = salTot;
+  if (S.config.totalFixos) document.getElementById('f-fixos').value = S.config.totalFixos;
+
+  calcModal();
+  openOverlay('overlay-mes');
+}
+
+function openEdit(mes) {
+  S.editMes = mes;
+  document.getElementById('modal-mes-title').textContent = `Editar — ${mes.mesAno}`;
+  document.getElementById('btn-del').style.display = '';
+
+  document.getElementById('f-mesano').value  = mes.mesAno;
+  document.getElementById('f-salario').value = mes.salario  || '';
+  document.getElementById('f-fixos').value   = mes.fixosInvest || '';
+  document.getElementById('f-nubank').value  = mes.nubank   || '';
+  document.getElementById('f-xp').value      = mes.xp       || '';
+  document.getElementById('f-btg').value     = mes.btg      || '';
+  document.getElementById('f-pix').value     = mes.pixDebito|| '';
+
+  calcModal();
+  openOverlay('overlay-mes');
+}
+
+function openOverlay(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── Form submit ──────────────────────────────────────────────
+document.getElementById('form-mes').addEventListener('submit', async e => {
+  e.preventDefault();
+  const v = id => Number(document.getElementById(id).value) || 0;
+  const mes = {
+    mesAno:     document.getElementById('f-mesano').value.trim(),
+    salario:    v('f-salario'),
+    fixosInvest:v('f-fixos'),
+    nubank:     v('f-nubank'),
+    xp:         v('f-xp'),
+    btg:        v('f-btg'),
+    pixDebito:  v('f-pix'),
+  };
+  const ok = await saveMonth(mes);
+  if (ok) {
+    closeOverlay('overlay-mes');
+    toast('Mês salvo!');
+    switchTab('resumo');
+  }
+});
+
+document.getElementById('btn-del').addEventListener('click', () => {
+  toast('Para excluir, remova a linha na planilha do Google Sheets');
+});
+
+// ── Event bindings ───────────────────────────────────────────
+document.getElementById('fab').addEventListener('click', openNew);
+document.getElementById('modal-mes-close').addEventListener('click', () => closeOverlay('overlay-mes'));
+document.getElementById('overlay-mes').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay-mes')) closeOverlay('overlay-mes');
+});
+
+['f-nubank','f-xp','f-btg','f-pix','f-salario','f-fixos'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcModal);
+});
+
+// Sync button
+document.getElementById('btn-sync').addEventListener('click', async () => {
+  if (S.syncing) return;
+  S.syncing = true;
+  const btn = document.getElementById('btn-sync');
+  btn.style.transition = 'none';
+  btn.style.animation  = 'spin .6s linear infinite';
+  await loadData();
+  render();
+  btn.style.animation = '';
+  S.syncing = false;
+  toast('Atualizado!');
+});
+
+// ── Toast ────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Init ─────────────────────────────────────────────────────
+(async () => {
+  await loadData();
+  render();
+})();
+</script>
+</body>
+</html>
