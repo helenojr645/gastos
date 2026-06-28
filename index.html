@@ -310,7 +310,10 @@ body::before{
 
   <!-- HISTÓRICO -->
   <section class="tab-s" id="s-hist">
-    <div style="margin-top:18px" id="hist-list"></div>
+    <div style="margin-top:18px;display:flex;justify-content:flex-end;padding:0 0 4px">
+      <button class="btn-add" style="width:auto;padding:8px 18px;margin-bottom:0" onclick="addProximoMes()">+ Novo mês</button>
+    </div>
+    <div id="hist-list"></div>
   </section>
 
   <!-- CONFIG -->
@@ -683,6 +686,23 @@ async function saveConfig(){
     toast('Configuração salva!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
   load(false);
+}
+
+function addProximoMes(){
+  var ultimo = D.hist[D.hist.length-1];
+  if(!ultimo){ toast('Nenhum mês existente ainda','inf'); return; }
+  var p = ultimo.mesAno.split('/');
+  var m = MES.indexOf(p[0]), y = parseInt(p[1]);
+  m++; if(m>=12){ m=0; y++; }
+  var prox = MES[m]+'/'+y;
+  if(D.hist.some(function(h){ return h.mesAno===prox; })){
+    toast('Já existe entrada para '+full(prox),'inf'); return;
+  }
+  var sal=D.cfg.salarioTotal||0, fix=D.cfg.totalFixos||0;
+  D.hist.push({ mesAno:prox, salario:sal, fixosInvest:fix,
+    nubank:0, xp:0, btg:0, pixDebito:0, totalFaturas:0, saldo:sal-fix, isNew:true });
+  renderHist();
+  toast(full(prox)+' adicionado','ok');
 }
 
 function go(tab){
