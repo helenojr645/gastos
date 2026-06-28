@@ -299,10 +299,10 @@ body::before{
       <div class="card">
         <div class="card-lbl">Faturas</div>
         <div class="s-grid" style="margin-bottom:0">
-          <div class="s-item"><div class="lbl">Nubank</div><div class="val" id="r-nu">R$ 0</div></div>
-          <div class="s-item"><div class="lbl">XP</div><div class="val" id="r-xp">R$ 0</div></div>
-          <div class="s-item"><div class="lbl">BTG</div><div class="val" id="r-btg">R$ 0</div></div>
-          <div class="s-item"><div class="lbl">PIX / Débito</div><div class="val" id="r-pix">R$ 0</div></div>
+          <div class="s-item"><div class="lbl" id="lbl-f1">Fatura 1</div><div class="val" id="r-f1">R$ 0</div></div>
+          <div class="s-item"><div class="lbl" id="lbl-f2">Fatura 2</div><div class="val" id="r-f2">R$ 0</div></div>
+          <div class="s-item"><div class="lbl" id="lbl-f3">Fatura 3</div><div class="val" id="r-f3">R$ 0</div></div>
+          <div class="s-item"><div class="lbl" id="lbl-f4">Fatura 4</div><div class="val" id="r-f4">R$ 0</div></div>
         </div>
       </div>
     </div>
@@ -319,6 +319,12 @@ body::before{
       <div class="cfg-sep">Salário</div>
       <div class="f-row"><label>Dia 15</label><input type="number" id="c-sal15" placeholder="0,00" inputmode="decimal"></div>
       <div class="f-row"><label>Dia 30</label><input type="number" id="c-sal30" placeholder="0,00" inputmode="decimal"></div>
+
+      <div class="cfg-sep">Nomes das Faturas</div>
+      <div class="f-row"><label>Fatura 1</label><input type="text" id="c-fat1" placeholder="ex: Nubank"></div>
+      <div class="f-row"><label>Fatura 2</label><input type="text" id="c-fat2" placeholder="ex: XP"></div>
+      <div class="f-row"><label>Fatura 3</label><input type="text" id="c-fat3" placeholder="ex: BTG"></div>
+      <div class="f-row"><label>Fatura 4</label><input type="text" id="c-fat4" placeholder="ex: PIX/Débito"></div>
 
       <div class="cfg-sep">Gastos Fixos</div>
       <div id="fixos-list"></div>
@@ -364,10 +370,11 @@ body::before{
 const API  = 'https://script.google.com/macros/s/AKfycbwL16iahBjbR0k8qzP4mWUhkBBUyzRZTmJcTEZlv1NV19OS35N3ADtriAK82VFNspST/exec';
 const MES  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESF = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const NOMES_PADRAO = ['Nubank','XP','BTG','PIX/Débito'];
 
 var D = {
   hist: [],
-  cfg: { salario15:0, salario30:0, fixos:[], metaInvestimento:0, salarioTotal:0, totalFixos:0 },
+  cfg: { salario15:0, salario30:0, fixos:[], metaInvestimento:0, salarioTotal:0, totalFixos:0, nomesFatura:NOMES_PADRAO.slice() },
   idx: 0,
   openEdit: null
 };
@@ -377,12 +384,23 @@ function mesAnoAtual(){ var d=new Date(); return MES[d.getMonth()]+'/'+d.getFull
 function toDate(s){ var p=String(s).split('/'); var i=MES.indexOf(p[0]); return new Date(+p[1],i>=0?i:0,1); }
 function full(s){ var p=String(s).split('/'); var i=MES.indexOf(p[0]); return (i>=0?MESF[i]:p[0])+' de '+p[1]; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nomes(){ return D.cfg.nomesFatura || NOMES_PADRAO; }
 
 async function callAPI(action, data){
   var u = API+'?action='+action;
   if(data) u += '&data='+encodeURIComponent(JSON.stringify(data));
   var r = await fetch(u);
   return r.json();
+}
+
+// Converte mesAno corrompido (Date.toString do Sheets) de volta para "Mmm/YYYY"
+function parseMesAno(s){
+  s = String(s);
+  var p = s.split('/');
+  if(p.length===2 && MES.indexOf(p[0])>=0) return s;
+  var d = new Date(s);
+  if(!isNaN(d.getTime())) return MES[d.getUTCMonth()]+'/'+d.getUTCFullYear();
+  return s;
 }
 
 function stripAcc(s){
@@ -405,6 +423,7 @@ function fixCfg(cfg){
   cfg.fixos = clean;
   cfg.salarioTotal = (cfg.salario15||0)+(cfg.salario30||0);
   cfg.totalFixos   = clean.reduce(function(s,x){return s+x.valor;},0);
+  if(!cfg.nomesFatura || !cfg.nomesFatura.length) cfg.nomesFatura = NOMES_PADRAO.slice();
   return cfg;
 }
 
@@ -413,7 +432,8 @@ async function init(){
   try {
     var res = await callAPI('all');
     if(res.error) throw new Error(res.error);
-    D.hist = (res.historico||[]).sort(function(a,b){ return toDate(a.mesAno)-toDate(b.mesAno); });
+    D.hist = (res.historico||[]).map(function(m){ m.mesAno=parseMesAno(m.mesAno); return m; })
+              .sort(function(a,b){ return toDate(a.mesAno)-toDate(b.mesAno); });
     D.cfg  = fixCfg(res.config) || D.cfg;
 
     var cur = mesAnoAtual();
@@ -439,6 +459,7 @@ function renderResumo(){
   var h = D.hist, i = D.idx;
   if(!h.length) return;
   var m = h[i];
+  var ns = nomes();
 
   document.getElementById('r-titulo').textContent = full(m.mesAno);
   document.getElementById('r-sub').textContent = m.isNew ? 'Mês atual — aguardando lançamento' : '';
@@ -454,10 +475,12 @@ function renderResumo(){
   document.getElementById('r-fix').textContent   = R(fix);
   document.getElementById('r-fat').textContent   = R(fat);
   document.getElementById('r-saldo').textContent = R(saldo);
-  document.getElementById('r-nu').textContent    = R(m.nubank);
-  document.getElementById('r-xp').textContent    = R(m.xp);
-  document.getElementById('r-btg').textContent   = R(m.btg);
-  document.getElementById('r-pix').textContent   = R(m.pixDebito);
+
+  // Nomes e valores das faturas (dinâmicos)
+  document.getElementById('lbl-f1').textContent = ns[0]; document.getElementById('r-f1').textContent = R(m.nubank);
+  document.getElementById('lbl-f2').textContent = ns[1]; document.getElementById('r-f2').textContent = R(m.xp);
+  document.getElementById('lbl-f3').textContent = ns[2]; document.getElementById('r-f3').textContent = R(m.btg);
+  document.getElementById('lbl-f4').textContent = ns[3]; document.getElementById('r-f4').textContent = R(m.pixDebito);
 
   var sc = document.getElementById('r-saldo-card');
   sc.className = 's-item wide '+(saldo>=0?'pos':'neg');
@@ -528,6 +551,7 @@ function renderHist(){
     el.innerHTML='<div class="empty"><div class="ico">&#128203;</div><p>Nenhum registro ainda</p></div>';
     return;
   }
+  var ns  = nomes();
   var rev = D.hist.slice().reverse();
   var html = '';
   for(var i=0; i<rev.length; i++){
@@ -541,16 +565,16 @@ function renderHist(){
       +'<span class="h-saldo '+sc+'">'+R(saldo)+'</span>'
       +'</div>'
       +'<div class="h-grid">'
-      +'<div class="h-cell"><div class="d-lbl">Nubank</div><div class="d-val">'+R(m.nubank)+'</div></div>'
-      +'<div class="h-cell"><div class="d-lbl">XP</div><div class="d-val">'+R(m.xp)+'</div></div>'
-      +'<div class="h-cell"><div class="d-lbl">BTG</div><div class="d-val">'+R(m.btg)+'</div></div>'
-      +'<div class="h-cell"><div class="d-lbl">PIX/D&eacute;b</div><div class="d-val">'+R(m.pixDebito)+'</div></div>'
+      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[0])+'</div><div class="d-val">'+R(m.nubank)+'</div></div>'
+      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[1])+'</div><div class="d-val">'+R(m.xp)+'</div></div>'
+      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[2])+'</div><div class="d-val">'+R(m.btg)+'</div></div>'
+      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[3])+'</div><div class="d-val">'+R(m.pixDebito)+'</div></div>'
       +'</div>'
       +'<div class="e-form" id="ef-'+ri+'">'
-      +'<div class="f-row"><label>Nubank</label><input type="number" id="en-'+ri+'" value="'+(m.nubank||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
-      +'<div class="f-row"><label>XP</label><input type="number" id="ex-'+ri+'" value="'+(m.xp||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
-      +'<div class="f-row"><label>BTG</label><input type="number" id="eb-'+ri+'" value="'+(m.btg||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
-      +'<div class="f-row"><label>PIX/D&eacute;bito</label><input type="number" id="ep-'+ri+'" value="'+(m.pixDebito||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
+      +'<div class="f-row"><label>'+esc(ns[0])+'</label><input type="number" id="en-'+ri+'" value="'+(m.nubank||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
+      +'<div class="f-row"><label>'+esc(ns[1])+'</label><input type="number" id="ex-'+ri+'" value="'+(m.xp||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
+      +'<div class="f-row"><label>'+esc(ns[2])+'</label><input type="number" id="eb-'+ri+'" value="'+(m.btg||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
+      +'<div class="f-row"><label>'+esc(ns[3])+'</label><input type="number" id="ep-'+ri+'" value="'+(m.pixDebito||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
       +'<button class="btn btn-primary" onclick="event.stopPropagation();saveMes('+ri+')">Salvar</button>'
       +'<button class="btn btn-ghost" onclick="event.stopPropagation();toggleEdit('+ri+')">Cancelar</button>'
       +'</div>'
@@ -604,9 +628,14 @@ async function saveMes(ri){
 }
 
 function renderCfg(){
+  var ns = nomes();
   document.getElementById('c-sal15').value = D.cfg.salario15||0;
   document.getElementById('c-sal30').value = D.cfg.salario30||0;
   document.getElementById('c-meta').value  = D.cfg.metaInvestimento||0;
+  document.getElementById('c-fat1').value  = ns[0];
+  document.getElementById('c-fat2').value  = ns[1];
+  document.getElementById('c-fat3').value  = ns[2];
+  document.getElementById('c-fat4').value  = ns[3];
   renderFixos(D.cfg.fixos||[]);
 }
 
@@ -615,7 +644,7 @@ function renderFixos(fixos){
   for(var i=0; i<fixos.length; i++){
     var f = fixos[i];
     html += '<div class="fixo-row">'
-      +'<input type="text" value="'+esc(f.descricao||'')+'" placeholder="Descri&ccedil;&atilde;o" oninput="D.cfg.fixos['+i+'].descricao=this.value">'
+      +'<input type="text" value="'+esc(f.descricao||'')+'" placeholder="Descrição" oninput="D.cfg.fixos['+i+'].descricao=this.value">'
       +'<input type="number" value="'+(f.valor||0)+'" placeholder="0,00" inputmode="decimal" oninput="D.cfg.fixos['+i+'].valor=parseFloat(this.value)||0">'
       +'<button class="btn-rm" onclick="rmFixo('+i+')">&times;</button>'
       +'</div>';
@@ -638,13 +667,19 @@ async function saveConfig(){
   var sal30 = parseFloat(document.getElementById('c-sal30').value)||0;
   var meta  = parseFloat(document.getElementById('c-meta').value)||0;
   var fixos = (D.cfg.fixos||[]).filter(function(f){ return f.descricao && f.valor>0; });
+  var fat1  = document.getElementById('c-fat1').value.trim() || NOMES_PADRAO[0];
+  var fat2  = document.getElementById('c-fat2').value.trim() || NOMES_PADRAO[1];
+  var fat3  = document.getElementById('c-fat3').value.trim() || NOMES_PADRAO[2];
+  var fat4  = document.getElementById('c-fat4').value.trim() || NOMES_PADRAO[3];
+  var nomesFatura = [fat1, fat2, fat3, fat4];
 
   load(true);
   try {
-    var res = await callAPI('save_config',{salario15:sal15,salario30:sal30,metaInvestimento:meta,fixos:fixos});
+    var res = await callAPI('save_config',{salario15:sal15, salario30:sal30, metaInvestimento:meta, fixos:fixos, nomesFatura:nomesFatura});
     if(res.error) throw new Error(res.error);
-    D.cfg = { salario15:sal15, salario30:sal30, metaInvestimento:meta, fixos:fixos,
+    D.cfg = { salario15:sal15, salario30:sal30, metaInvestimento:meta, fixos:fixos, nomesFatura:nomesFatura,
       salarioTotal:sal15+sal30, totalFixos:fixos.reduce(function(s,f){return s+f.valor;},0) };
+    renderResumo(); renderHist();
     toast('Configuração salva!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
   load(false);
