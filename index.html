@@ -488,10 +488,12 @@ function renderResumo(){
   var sc = document.getElementById('r-saldo-card');
   sc.className = 's-item wide '+(saldo>=0?'pos':'neg');
 
-  drawPie(fix, fat, Math.max(0, saldo));
+  drawPie(fix, fat, saldo);
   document.getElementById('l-fix').textContent   = R(fix);
   document.getElementById('l-fat').textContent   = R(fat);
-  document.getElementById('l-saldo').textContent = R(Math.max(0,saldo));
+  var lSaldo = document.getElementById('l-saldo');
+  lSaldo.textContent = R(saldo);
+  lSaldo.style.color = saldo < 0 ? 'var(--red)' : '';
 
   var total = fix+fat;
   var pct   = sal>0 ? Math.min(100,Math.round(total/sal*100)) : 0;
@@ -517,7 +519,8 @@ function navMes(d){ var ni=D.idx+d; if(ni<0||ni>=D.hist.length) return; D.idx=ni
 
 function drawPie(fix, fat, saldo){
   var svg = document.getElementById('pie');
-  var total = fix+fat+saldo;
+  var overspent = saldo < 0;
+  var total = fix + fat + (overspent ? 0 : saldo);
   var cx=70, cy=70, r=48, sw=22;
   var C = 2*Math.PI*r;
 
@@ -527,7 +530,10 @@ function drawPie(fix, fat, saldo){
     return;
   }
 
-  var segs = [{v:fix,c:'#1661b8'},{v:fat,c:'#6b21e8'},{v:saldo,c:'#00c896'}].filter(function(s){return s.v>0;});
+  var segs = overspent
+    ? [{v:fix,c:'#1661b8'},{v:fat,c:'#9333ea'}].filter(function(s){return s.v>0;})
+    : [{v:fix,c:'#1661b8'},{v:fat,c:'#6b21e8'},{v:saldo,c:'#00c896'}].filter(function(s){return s.v>0;});
+
   var html = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="'+sw+'"/>';
   var cum = 0;
   var gap = segs.length>1 ? 0.01 : 0;
@@ -542,9 +548,15 @@ function drawPie(fix, fat, saldo){
     cum += frac;
   }
 
-  var pctFat = total>0 ? Math.round((fat/total)*100) : 0;
-  html += '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" fill="white" font-size="17" font-weight="700">'+pctFat+'%</text>';
-  html += '<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">Faturas</text>';
+  if(overspent){
+    var pctOver = Math.round(Math.abs(saldo)/(fix+fat)*100);
+    html += '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" fill="#f87171" font-size="15" font-weight="700">+'+pctOver+'%</text>';
+    html += '<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">excedido</text>';
+  } else {
+    var pctFat = Math.round((fat/total)*100);
+    html += '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" fill="white" font-size="17" font-weight="700">'+pctFat+'%</text>';
+    html += '<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">Faturas</text>';
+  }
   svg.innerHTML = html;
 }
 
