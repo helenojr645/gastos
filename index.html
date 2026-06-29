@@ -62,6 +62,12 @@ body::before{
 .hdr{padding:52px 20px 0;display:flex;align-items:center;justify-content:space-between}
 .hdr-title{font-size:14px;font-weight:700;letter-spacing:.5px;color:var(--muted)}
 .hdr-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);box-shadow:0 0 8px currentColor;transition:background .3s}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.btn-refresh{background:none;border:none;padding:4px;cursor:pointer;color:var(--muted);display:flex;align-items:center;transition:color .2s;-webkit-tap-highlight-color:transparent}
+.btn-refresh:active{color:#fff}
+.btn-refresh svg{width:18px;height:18px;transition:transform .5s}
+.btn-refresh.spinning svg{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* tabs */
 .tab-s{display:none;padding:14px 16px 0}
@@ -246,7 +252,15 @@ body::before{
 <div class="app">
   <div class="hdr">
     <span class="hdr-title">CONTROLE DE GASTOS</span>
-    <div class="hdr-dot" id="dot"></div>
+    <div class="hdr-right">
+      <button class="btn-refresh" id="btn-refresh" onclick="refresh()" title="Atualizar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+      </button>
+      <div class="hdr-dot" id="dot"></div>
+    </div>
   </div>
 
   <!-- RESUMO -->
@@ -428,6 +442,13 @@ function fixCfg(cfg){
   cfg.totalFixos   = clean.reduce(function(s,x){return s+x.valor;},0);
   if(!cfg.nomesFatura || !cfg.nomesFatura.length) cfg.nomesFatura = NOMES_PADRAO.slice();
   return cfg;
+}
+
+async function refresh(){
+  var btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+  await init();
+  btn.classList.remove('spinning');
 }
 
 async function init(){
