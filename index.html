@@ -540,45 +540,53 @@ function navMes(d){ var ni=D.idx+d; if(ni<0||ni>=D.hist.length) return; D.idx=ni
 
 function drawPie(fix, fat, saldo){
   var svg = document.getElementById('pie');
+  var cx=70, cy=70, RO=58, RI=36;
   var overspent = saldo < 0;
-  var total = fix + fat + (overspent ? 0 : saldo);
-  var cx=70, cy=70, r=48, sw=22;
-  var C = 2*Math.PI*r;
+  var base = fix + fat + (overspent ? 0 : saldo);
 
-  if(total<=0){
-    svg.innerHTML = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="'+sw+'"/>'
-      +'<text x="'+cx+'" y="'+(cy+4)+'" text-anchor="middle" fill="rgba(255,255,255,0.2)" font-size="11">Sem dados</text>';
+  if(base<=0){
+    svg.innerHTML='<circle cx="70" cy="70" r="47" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="22"/>'
+      +'<text x="70" y="74" text-anchor="middle" fill="rgba(255,255,255,0.2)" font-size="11">Sem dados</text>';
     return;
   }
 
-  var segs = overspent
-    ? [{v:fix,c:'#1661b8'},{v:fat,c:'#9333ea'}].filter(function(s){return s.v>0;})
-    : [{v:fix,c:'#1661b8'},{v:fat,c:'#6b21e8'},{v:saldo,c:'#00c896'}].filter(function(s){return s.v>0;});
+  var slices = [];
+  if(fix>0)              slices.push({v:fix/base, c:'#1661b8'});
+  if(fat>0)              slices.push({v:fat/base, c: overspent?'#9333ea':'#6b21e8'});
+  if(!overspent&&saldo>0) slices.push({v:saldo/base, c:'#00c896'});
 
-  var html = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="'+sw+'"/>';
-  var cum = 0;
-  var gap = segs.length>1 ? 0.01 : 0;
+  var GAP = slices.length>1 ? 2 : 0; // graus de separação entre fatias
+  var html = '<circle cx="70" cy="70" r="47" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="22"/>';
+  var angle = -90; // começa no topo
 
-  for(var k=0; k<segs.length; k++){
-    var seg = segs[k];
-    var frac = seg.v/total;
-    var len  = Math.max(0,(frac-gap)*C);
-    var off  = C/4 - cum*C;
-    html += '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+seg.c+'" stroke-width="'+sw
-      +'" stroke-dasharray="'+len+' '+C+'" stroke-dashoffset="'+off+'" stroke-linecap="butt"/>';
-    cum += frac;
+  function pt(a,r){ var rad=a*Math.PI/180; return {x:cx+r*Math.cos(rad), y:cy+r*Math.sin(rad)}; }
+
+  for(var k=0; k<slices.length; k++){
+    var sl = slices[k];
+    var sweep = sl.v*360 - GAP;
+    if(sweep<0.5) continue;
+    var a1=angle, a2=angle+sweep;
+    var p1o=pt(a1,RO), p2o=pt(a2,RO), p1i=pt(a2,RI), p2i=pt(a1,RI);
+    var large=sweep>180?1:0;
+    html += '<path d="M '+p1o.x.toFixed(2)+' '+p1o.y.toFixed(2)
+      +' A '+RO+' '+RO+' 0 '+large+' 1 '+p2o.x.toFixed(2)+' '+p2o.y.toFixed(2)
+      +' L '+p1i.x.toFixed(2)+' '+p1i.y.toFixed(2)
+      +' A '+RI+' '+RI+' 0 '+large+' 0 '+p2i.x.toFixed(2)+' '+p2i.y.toFixed(2)
+      +' Z" fill="'+sl.c+'"/>';
+    angle += sl.v*360;
   }
 
   if(overspent){
-    var pctOver = Math.round(Math.abs(saldo)/(fix+fat)*100);
-    html += '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" fill="#f87171" font-size="15" font-weight="700">+'+pctOver+'%</text>';
-    html += '<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">excedido</text>';
+    var absV=Math.abs(saldo);
+    var valStr=absV>=1000?'R$'+(absV/1000).toFixed(1)+'k':'R$'+absV.toFixed(0);
+    html+='<text x="70" y="65" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">Excedido</text>';
+    html+='<text x="70" y="82" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700">'+valStr+'</text>';
   } else {
-    var pctFat = Math.round((fat/total)*100);
-    html += '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" fill="white" font-size="17" font-weight="700">'+pctFat+'%</text>';
-    html += '<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">Faturas</text>';
+    var pctFat=Math.round((fat/base)*100);
+    html+='<text x="70" y="65" text-anchor="middle" fill="white" font-size="18" font-weight="700">'+pctFat+'%</text>';
+    html+='<text x="70" y="81" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">Faturas</text>';
   }
-  svg.innerHTML = html;
+  svg.innerHTML=html;
 }
 
 function renderHist(){
