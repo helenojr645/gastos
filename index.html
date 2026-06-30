@@ -493,7 +493,7 @@ function renderResumo(){
   var sal   = m.salario     || D.cfg.salarioTotal || 0;
   var fix   = m.fixosInvest || D.cfg.totalFixos   || 0;
   var fat   = m.totalFaturas || 0;
-  var saldo = (m.saldo !== undefined) ? m.saldo : sal-fix-fat;
+  var saldo = sal - fix - fat;
 
   document.getElementById('r-sal').textContent   = R(sal);
   document.getElementById('r-fix').textContent   = R(fix);
@@ -601,7 +601,9 @@ function renderHist(){
   for(var i=0; i<rev.length; i++){
     var m  = rev[i];
     var ri = D.hist.length-1-i;
-    var saldo = (m.saldo!==undefined) ? m.saldo : (m.salario||0)-(m.fixosInvest||0)-(m.totalFaturas||0);
+    var mSal = m.salario || D.cfg.salarioTotal || 0;
+    var mFix = m.fixosInvest || D.cfg.totalFixos || 0;
+    var saldo = mSal - mFix - (m.totalFaturas||0);
     var sc = saldo>=0?'pos':'neg';
     html += '<div class="h-item" id="hi-'+ri+'" onclick="toggleEdit('+ri+')">'
       +'<div class="h-hdr">'
