@@ -17,12 +17,14 @@
     var c=document.createElement('canvas'); c.width=c.height=180;
     var x=c.getContext('2d');
     var g=x.createLinearGradient(0,0,180,180);
-    g.addColorStop(0,'#0d1e42'); g.addColorStop(1,'#1661b8');
+    g.addColorStop(0,'#0a1224'); g.addColorStop(1,'#14284a');
     x.fillStyle=g; x.fillRect(0,0,180,180);
-    x.fillStyle='rgba(255,255,255,0.1)';
-    x.beginPath(); x.arc(160,20,90,0,Math.PI*2); x.fill();
-    x.fillStyle='#ffffff'; x.font='bold 90px system-ui,sans-serif';
-    x.textAlign='center'; x.textBaseline='middle'; x.fillText('G',90,96);
+    var cx=90, cy=90, r=64;
+    function wedge(a0,a1,col){ x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,r,a0,a1); x.closePath(); x.fillStyle=col; x.fill(); }
+    wedge(-1.6, 1.05, '#1661b8');
+    wedge(1.05, 3.35, '#6b21e8');
+    wedge(3.35, -1.6+6.2832, '#00c896');
+    x.beginPath(); x.arc(cx,cy,33,0,6.2832); x.fillStyle='#0e1a30'; x.fill();
     document.getElementById('ati').href=c.toDataURL('image/png');
   }catch(e){}
 })();
@@ -175,7 +177,7 @@ body::before{
   outline:none;-webkit-appearance:none;
 }
 .fixo-row input:first-child{flex:2}
-.fixo-row input:nth-child(2){flex:1}
+.fixo-row input.val-in{flex:1}
 .fixo-row input:focus{border-color:var(--blue-l)}
 .btn-rm{
   width:36px;height:36px;border-radius:10px;flex-shrink:0;align-self:center;
@@ -264,7 +266,7 @@ body::before{
     </div>
   </div>
 
-  <!-- RESUMO -->
+  <!-- RESUMO (apenas números) -->
   <section class="tab-s on" id="s-resumo">
     <div style="margin-top:18px">
       <div class="m-nav">
@@ -284,7 +286,33 @@ body::before{
       </div>
 
       <div class="card">
-        <div class="card-lbl">Distribuição</div>
+        <div class="card-lbl">Comprometimento do salário</div>
+        <div class="prog-hdr"><span>Gastos totais</span><span id="prog-pct">0%</span></div>
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+        <div class="comp" id="comp"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-lbl">Faturas</div>
+        <div class="s-grid" id="r-fat-grid" style="margin-bottom:0"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GRÁFICOS -->
+  <section class="tab-s" id="s-graf">
+    <div style="margin-top:18px">
+      <div class="m-nav">
+        <button class="nav-btn" id="g-prev" onclick="navMes(-1)">&#8249;</button>
+        <div class="m-nav-c">
+          <div class="m-nav-t" id="g-titulo">—</div>
+          <div class="m-nav-s">Mês selecionado</div>
+        </div>
+        <button class="nav-btn" id="g-next" onclick="navMes(1)">&#8250;</button>
+      </div>
+
+      <div class="card">
+        <div class="card-lbl">Distribuição do mês</div>
         <div class="chart-wrap">
           <svg id="pie" width="140" height="140" viewBox="0 0 140 140" style="flex-shrink:0"></svg>
           <div class="chart-legend">
@@ -305,29 +333,23 @@ body::before{
       </div>
 
       <div class="card">
-        <div class="card-lbl">Comprometimento do salário</div>
-        <div class="prog-hdr"><span>Gastos totais</span><span id="prog-pct">0%</span></div>
-        <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
-        <div class="comp" id="comp"></div>
+        <div class="card-lbl">Distribuição por fatura</div>
+        <div id="dist"></div>
       </div>
 
       <div class="card">
         <div class="card-lbl">Evolução (últimos meses)</div>
         <svg id="evo" viewBox="0 0 300 150" width="100%" style="display:block"></svg>
-        <div style="display:flex;gap:18px;margin-top:8px">
+        <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap">
+          <div class="leg-item" style="margin-bottom:0"><div class="leg-dot" style="background:#1661b8"></div><div class="leg-lbl">Fixos + Invest</div></div>
           <div class="leg-item" style="margin-bottom:0"><div class="leg-dot" style="background:#6b21e8"></div><div class="leg-lbl">Faturas</div></div>
           <div class="leg-item" style="margin-bottom:0"><div class="leg-dot" style="background:#00c896"></div><div class="leg-lbl">Saldo livre</div></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-lbl">Faturas</div>
-        <div class="s-grid" style="margin-bottom:0">
-          <div class="s-item"><div class="lbl" id="lbl-f1">Fatura 1</div><div class="val" id="r-f1">R$ 0</div></div>
-          <div class="s-item"><div class="lbl" id="lbl-f2">Fatura 2</div><div class="val" id="r-f2">R$ 0</div></div>
-          <div class="s-item"><div class="lbl" id="lbl-f3">Fatura 3</div><div class="val" id="r-f3">R$ 0</div></div>
-          <div class="s-item"><div class="lbl" id="lbl-f4">Fatura 4</div><div class="val" id="r-f4">R$ 0</div></div>
-        </div>
+        <div class="card-lbl">Médias mensais</div>
+        <div class="s-grid" id="medias" style="margin-bottom:0"></div>
       </div>
     </div>
   </section>
@@ -344,26 +366,24 @@ body::before{
   <section class="tab-s" id="s-cfg">
     <div class="card" style="margin-top:18px">
       <div class="cfg-sep">Salário</div>
-      <div class="f-row"><label>Dia 15</label><input type="number" id="c-sal15" placeholder="0,00" inputmode="decimal"></div>
-      <div class="f-row"><label>Dia 30</label><input type="number" id="c-sal30" placeholder="0,00" inputmode="decimal"></div>
+      <div class="f-row"><label>Dia 15</label><input type="number" id="c-sal15" placeholder="0,00" inputmode="decimal" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>
+      <div class="f-row"><label>Dia 30</label><input type="number" id="c-sal30" placeholder="0,00" inputmode="decimal" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>
 
-      <div class="cfg-sep">Nomes das Faturas</div>
-      <div class="f-row"><label>Fatura 1</label><input type="text" id="c-fat1" placeholder="ex: Nubank"></div>
-      <div class="f-row"><label>Fatura 2</label><input type="text" id="c-fat2" placeholder="ex: XP"></div>
-      <div class="f-row"><label>Fatura 3</label><input type="text" id="c-fat3" placeholder="ex: BTG"></div>
-      <div class="f-row"><label>Fatura 4</label><input type="text" id="c-fat4" placeholder="ex: PIX/Débito"></div>
+      <div class="cfg-sep">Faturas (cartões / formas de pagamento)</div>
+      <div id="faturas-list"></div>
+      <button class="btn-add" onclick="addFatura()">+ Adicionar fatura</button>
 
       <div class="cfg-sep">Gastos Fixos</div>
       <div id="fixos-list"></div>
       <button class="btn-add" onclick="addFixo()">+ Adicionar fixo</button>
 
       <div class="cfg-sep">Investimento mensal (desconta do saldo)</div>
-      <div class="f-row"><label>Valor</label><input type="number" id="c-meta" placeholder="0,00" inputmode="decimal"></div>
+      <div class="f-row"><label>Valor</label><input type="number" id="c-meta" placeholder="0,00" inputmode="decimal" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>
 
       <button class="btn btn-primary" onclick="saveConfig()">Salvar Configuração</button>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:12px;padding:12px 20px 20px">
-      Salário e fixos são aplicados automaticamente ao salvar qualquer mês.
+      Salário, faturas e fixos são aplicados automaticamente ao salvar qualquer mês.
     </p>
   </section>
 </div>
@@ -377,6 +397,15 @@ body::before{
       <rect x="14" y="14" width="7" height="7" rx="1.5"/>
     </svg>
     <span>Resumo</span>
+  </button>
+  <button class="tab-btn" id="tb-graf" onclick="go('graf')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M3 3v18h18"/>
+      <rect x="7" y="11" width="3" height="7" rx="1"/>
+      <rect x="12" y="7" width="3" height="11" rx="1"/>
+      <rect x="17" y="13" width="3" height="5" rx="1"/>
+    </svg>
+    <span>Gráficos</span>
   </button>
   <button class="tab-btn" id="tb-hist" onclick="go('hist')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -397,12 +426,13 @@ body::before{
 const API  = 'https://script.google.com/macros/s/AKfycbwL16iahBjbR0k8qzP4mWUhkBBUyzRZTmJcTEZlv1NV19OS35N3ADtriAK82VFNspST/exec';
 const MES  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESF = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const NOMES_PADRAO = ['Nubank','XP','BTG','PIX/Débito'];
+const FAT_PADRAO = ['Nubank','XP','BTG','PIX/Débito'];
 const CACHE_KEY = 'gastos_cache_v1';
+const CORES = ['#1661b8','#6b21e8','#00c896','#ff9500','#2478d4','#9333ea','#00a884','#ff4d6d'];
 
 var D = {
   hist: [],
-  cfg: { salario15:0, salario30:0, fixos:[], metaInvestimento:0, salarioTotal:0, totalFixos:0, nomesFatura:NOMES_PADRAO.slice() },
+  cfg: { salario15:0, salario30:0, fixos:[], metaInvestimento:0, salarioTotal:0, totalFixos:0, nomesFatura:FAT_PADRAO.slice() },
   idx: 0,
   openEdit: null
 };
@@ -412,7 +442,7 @@ function mesAnoAtual(){ var d=new Date(); return MES[d.getMonth()]+'/'+d.getFull
 function toDate(s){ var p=String(s).split('/'); var i=MES.indexOf(p[0]); return new Date(+p[1],i>=0?i:0,1); }
 function full(s){ var p=String(s).split('/'); var i=MES.indexOf(p[0]); return (i>=0?MESF[i]:p[0])+' de '+p[1]; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function nomes(){ return D.cfg.nomesFatura || NOMES_PADRAO; }
+function nomes(){ return (D.cfg.nomesFatura && D.cfg.nomesFatura.length) ? D.cfg.nomesFatura : FAT_PADRAO; }
 
 async function callAPI(action, data){
   var u = API+'?action='+action;
@@ -451,15 +481,8 @@ function fixCfg(cfg){
   cfg.fixos = clean;
   cfg.salarioTotal = (cfg.salario15||0)+(cfg.salario30||0);
   cfg.totalFixos   = clean.reduce(function(s,x){return s+x.valor;},0);
-  if(!cfg.nomesFatura || !cfg.nomesFatura.length) cfg.nomesFatura = NOMES_PADRAO.slice();
+  if(!cfg.nomesFatura || !cfg.nomesFatura.length) cfg.nomesFatura = FAT_PADRAO.slice();
   return cfg;
-}
-
-async function refresh(){
-  var btn = document.getElementById('btn-refresh');
-  btn.classList.add('spinning');
-  await init();
-  btn.classList.remove('spinning');
 }
 
 // ---- Cache local (stale-while-revalidate) ----
@@ -477,10 +500,11 @@ function setDot(ok){
   document.getElementById('dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:'+c+';box-shadow:0 0 8px '+c;
 }
 
-// Processa uma resposta (do cache ou da rede) e renderiza, preservando o mês em foco.
+function renderAll(){ renderResumo(); renderGraficos(); renderHist(); renderCfg(); }
+
 function applyData(res){
   var viewing = (D.hist[D.idx]||{}).mesAno;
-  D.hist = (res.historico||[]).map(function(m){ m.mesAno=parseMesAno(m.mesAno); return m; })
+  D.hist = (res.historico||[]).map(function(m){ m.mesAno=parseMesAno(m.mesAno); if(!m.faturas) m.faturas={}; return m; })
             .sort(function(a,b){ return toDate(a.mesAno)-toDate(b.mesAno); });
   D.cfg  = fixCfg(res.config) || D.cfg;
 
@@ -488,15 +512,14 @@ function applyData(res){
   var hasCur = D.hist.some(function(m){ return m.mesAno===cur; });
   if(!hasCur){
     var sal = D.cfg.salarioTotal||0, fix = D.cfg.totalFixos||0;
-    D.hist.push({ mesAno:cur, salario:sal, fixosInvest:fix,
-      nubank:0, xp:0, btg:0, pixDebito:0, totalFaturas:0, saldo:sal-fix, isNew:true });
+    D.hist.push({ mesAno:cur, salario:sal, fixosInvest:fix, faturas:{}, totalFaturas:0, saldo:sal-fix, isNew:true });
   }
   D.idx = -1;
   if(viewing) D.idx = D.hist.findIndex(function(m){ return m.mesAno===viewing; });
   if(D.idx<0)  D.idx = D.hist.findIndex(function(m){ return m.mesAno===cur; });
   if(D.idx<0)  D.idx = D.hist.length-1;
 
-  renderResumo(); renderHist(); renderCfg();
+  renderAll();
 }
 
 async function init(){
@@ -518,57 +541,36 @@ async function init(){
   load(false);
 }
 
-// Valores efetivos de um mês. O investimento (metaInvestimento) é sempre
-// descontado do saldo livre e somado ao card "Fixos + Invest".
-// m.fixosInvest = apenas fixos (legado); invest vem sempre da config atual.
+// Soma das faturas de um mês (objeto {nome:valor})
+function fatTotal(m){ var f=m.faturas||{}, s=0; for(var k in f){ s+=Number(f[k])||0; } return s; }
+
+// Valores efetivos do mês. Investimento (metaInvestimento) sempre desconta do saldo.
 function calc(m){
   var sal    = m.salario || D.cfg.salarioTotal || 0;
   var fixos  = (m.fixosInvest || D.cfg.totalFixos) || 0;
   var invest = D.cfg.metaInvestimento || 0;
-  var fat    = m.totalFaturas || 0;
+  var fat    = fatTotal(m);
   return { sal:sal, fixos:fixos, invest:invest, fixInvest:fixos+invest, fat:fat, saldo:sal-fixos-invest-fat };
 }
 
 function renderResumo(){
   var h = D.hist, i = D.idx;
   if(!h.length) return;
-  var m = h[i];
-  var ns = nomes();
+  var m = h[i], c = calc(m), ns = nomes();
 
   document.getElementById('r-titulo').textContent = full(m.mesAno);
   document.getElementById('r-sub').textContent = m.isNew ? 'Mês atual — aguardando lançamento' : '';
   document.getElementById('btn-prev').disabled = i<=0;
   document.getElementById('btn-next').disabled = i>=h.length-1;
 
-  var c     = calc(m);
-  var sal   = c.sal;
-  var fix   = c.fixInvest;
-  var fat   = c.fat;
-  var saldo = c.saldo;
+  document.getElementById('r-sal').textContent   = R(c.sal);
+  document.getElementById('r-fix').textContent   = R(c.fixInvest);
+  document.getElementById('r-fat').textContent   = R(c.fat);
+  document.getElementById('r-saldo').textContent = R(c.saldo);
+  document.getElementById('r-saldo-card').className = 's-item wide '+(c.saldo>=0?'pos':'neg');
 
-  document.getElementById('r-sal').textContent   = R(sal);
-  document.getElementById('r-fix').textContent   = R(fix);
-  document.getElementById('r-fat').textContent   = R(fat);
-  document.getElementById('r-saldo').textContent = R(saldo);
-
-  // Nomes e valores das faturas (dinâmicos)
-  document.getElementById('lbl-f1').textContent = ns[0]; document.getElementById('r-f1').textContent = R(m.nubank);
-  document.getElementById('lbl-f2').textContent = ns[1]; document.getElementById('r-f2').textContent = R(m.xp);
-  document.getElementById('lbl-f3').textContent = ns[2]; document.getElementById('r-f3').textContent = R(m.btg);
-  document.getElementById('lbl-f4').textContent = ns[3]; document.getElementById('r-f4').textContent = R(m.pixDebito);
-
-  var sc = document.getElementById('r-saldo-card');
-  sc.className = 's-item wide '+(saldo>=0?'pos':'neg');
-
-  drawPie(fix, fat, saldo);
-  document.getElementById('l-fix').textContent   = R(fix);
-  document.getElementById('l-fat').textContent   = R(fat);
-  var lSaldo = document.getElementById('l-saldo');
-  lSaldo.textContent = R(saldo);
-  lSaldo.style.color = saldo < 0 ? 'var(--red)' : '';
-
-  var total = fix+fat;
-  var pct   = sal>0 ? Math.min(100,Math.round(total/sal*100)) : 0;
+  var total = c.fixInvest+c.fat;
+  var pct   = c.sal>0 ? Math.min(100,Math.round(total/c.sal*100)) : 0;
   var fill  = document.getElementById('prog-fill');
   fill.style.width = pct+'%';
   fill.style.background = pct<70 ? 'var(--green)' : pct<90 ? 'var(--orange)' : 'var(--red)';
@@ -576,60 +578,45 @@ function renderResumo(){
 
   var cmp = document.getElementById('comp');
   if(i>0){
-    var prev = h[i-1];
-    var df   = fat - (prev.totalFaturas||0);
-    var pp   = prev.totalFaturas>0 ? Math.round(Math.abs(df)/prev.totalFaturas*100) : null;
-    var sign = df>0?'+':'';
-    var cls  = df>0?'up':df<0?'dn':'eq';
+    var prev = h[i-1], pf = fatTotal(prev), df = c.fat - pf;
+    var pp   = pf>0 ? Math.round(Math.abs(df)/pf*100) : null;
+    var sign = df>0?'+':'', cls = df>0?'up':df<0?'dn':'eq';
     var arr  = df>0?'&#8593;':df<0?'&#8595;':'&#8594;';
     var ptxt = pp!==null ? sign+pp+'%' : (df===0?'igual':'—');
     cmp.innerHTML = '<span class="badge '+cls+'">'+arr+' '+ptxt+'</span> em faturas vs '+full(prev.mesAno);
   } else { cmp.innerHTML = ''; }
 
-  drawEvolucao();
-}
-
-// Gráfico de evolução: barras = faturas, linha = saldo livre (últimos meses)
-function drawEvolucao(){
-  var svg = document.getElementById('evo');
-  if(!svg) return;
-  var months = D.hist.slice(-6);
-  if(months.length < 2){
-    svg.innerHTML = '<text x="150" y="72" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="11">Poucos dados para evolução</text>';
-    return;
+  var grid = document.getElementById('r-fat-grid'), html = '';
+  for(var k=0;k<ns.length;k++){
+    var v = (m.faturas && m.faturas[ns[k]]) || 0;
+    html += '<div class="s-item"><div class="lbl">'+esc(ns[k])+'</div><div class="val">'+R(v)+'</div></div>';
   }
-  var W=300, H=150, padL=8, padR=8, padT=14, padB=22;
-  var data = months.map(function(m){ var c=calc(m); return { mes:m.mesAno, fat:c.fat, saldo:c.saldo }; });
-  var vals = [0];
-  data.forEach(function(d){ vals.push(d.fat); vals.push(d.saldo); });
-  var maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
-  if(maxV===minV) maxV = minV + 1;
-  var plotW = W - padL - padR, plotH = H - padT - padB, n = data.length;
-  function y(v){ return padT + plotH * (1 - (v - minV)/(maxV - minV)); }
-  var band = plotW / n, barW = band*0.42, zeroY = y(0);
-
-  var html = '<line x1="'+padL+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+zeroY.toFixed(1)
-    +'" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3 3"/>';
-
-  data.forEach(function(d,i){
-    var cx = padL + band*i + band/2, yv = y(d.fat), hh = Math.max(0, zeroY - yv);
-    html += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+barW.toFixed(1)
-      +'" height="'+hh.toFixed(1)+'" rx="2" fill="#6b21e8" opacity="0.85"/>';
-  });
-
-  var pts = data.map(function(d,i){ return (padL + band*i + band/2).toFixed(1)+','+y(d.saldo).toFixed(1); });
-  html += '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#00c896" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
-
-  data.forEach(function(d,i){
-    var cx = padL + band*i + band/2;
-    html += '<circle cx="'+cx.toFixed(1)+'" cy="'+y(d.saldo).toFixed(1)+'" r="2.6" fill="'+(d.saldo<0?'#ff4d6d':'#00c896')+'"/>';
-    html += '<text x="'+cx.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">'+esc(d.mes.split('/')[0])+'</text>';
-  });
-
-  svg.innerHTML = html;
+  grid.innerHTML = html || '<div class="s-item wide"><div class="lbl">Sem faturas</div><div class="val">—</div></div>';
 }
 
-function navMes(d){ var ni=D.idx+d; if(ni<0||ni>=D.hist.length) return; D.idx=ni; renderResumo(); }
+function navMes(d){ var ni=D.idx+d; if(ni<0||ni>=D.hist.length) return; D.idx=ni; renderResumo(); renderGraficos(); }
+
+/* ============ GRÁFICOS ============ */
+function renderGraficos(){
+  var h = D.hist, i = D.idx;
+  if(!h.length) return;
+  var m = h[i], c = calc(m), ns = nomes();
+
+  document.getElementById('g-titulo').textContent = full(m.mesAno);
+  document.getElementById('g-prev').disabled = i<=0;
+  document.getElementById('g-next').disabled = i>=h.length-1;
+
+  drawPie(c.fixInvest, c.fat, c.saldo);
+  document.getElementById('l-fix').textContent = R(c.fixInvest);
+  document.getElementById('l-fat').textContent = R(c.fat);
+  var lSaldo = document.getElementById('l-saldo');
+  lSaldo.textContent = R(c.saldo);
+  lSaldo.style.color = c.saldo < 0 ? 'var(--red)' : '';
+
+  drawDistribuicao(m, ns);
+  drawEvolucao();
+  drawMedias();
+}
 
 function drawPie(fix, fat, saldo){
   var svg = document.getElementById('pie');
@@ -644,14 +631,13 @@ function drawPie(fix, fat, saldo){
   }
 
   var slices = [];
-  if(fix>0)              slices.push({v:fix/base, c:'#1661b8'});
-  if(fat>0)              slices.push({v:fat/base, c: overspent?'#9333ea':'#6b21e8'});
+  if(fix>0)               slices.push({v:fix/base, c:'#1661b8'});
+  if(fat>0)               slices.push({v:fat/base, c: overspent?'#9333ea':'#6b21e8'});
   if(!overspent&&saldo>0) slices.push({v:saldo/base, c:'#00c896'});
 
-  var GAP = slices.length>1 ? 2 : 0; // graus de separação entre fatias
+  var GAP = slices.length>1 ? 2 : 0;
   var html = '<circle cx="70" cy="70" r="47" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="22"/>';
-  var angle = -90; // começa no topo
-
+  var angle = -90;
   function pt(a,r){ var rad=a*Math.PI/180; return {x:cx+r*Math.cos(rad), y:cy+r*Math.sin(rad)}; }
 
   for(var k=0; k<slices.length; k++){
@@ -682,6 +668,82 @@ function drawPie(fix, fat, saldo){
   svg.innerHTML=html;
 }
 
+function drawDistribuicao(m, ns){
+  var el = document.getElementById('dist');
+  var vals = ns.map(function(nm){ return { nm:nm, v:(m.faturas && m.faturas[nm])||0 }; });
+  var total = vals.reduce(function(s,x){ return s+x.v; }, 0);
+  var max   = Math.max.apply(null, vals.map(function(x){ return x.v; }).concat([1]));
+  if(total<=0){
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:8px">Sem lançamentos neste mês</p>';
+    return;
+  }
+  var html = '';
+  vals.forEach(function(x,idx){
+    var pct  = max>0 ? Math.round(x.v/max*100) : 0;
+    var pctT = total>0 ? Math.round(x.v/total*100) : 0;
+    html += '<div style="margin-bottom:12px">'
+      +'<div class="prog-hdr"><span>'+esc(x.nm)+'</span><span>'+R(x.v)+' · '+pctT+'%</span></div>'
+      +'<div class="prog-bar"><div class="prog-fill" style="width:'+pct+'%;background:'+CORES[idx%CORES.length]+'"></div></div>'
+      +'</div>';
+  });
+  el.innerHTML = html;
+}
+
+// Barras empilhadas: fixos+invest (base) e faturas (topo); linha = saldo livre
+function drawEvolucao(){
+  var svg = document.getElementById('evo');
+  if(!svg) return;
+  var months = D.hist.slice(-6);
+  if(months.length < 2){
+    svg.innerHTML = '<text x="150" y="72" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="11">Poucos dados para evolução</text>';
+    return;
+  }
+  var W=300, H=150, padL=8, padR=8, padT=14, padB=22;
+  var data = months.map(function(m){ var c=calc(m); return { mes:m.mesAno, fixos:c.fixInvest, fat:c.fat, saldo:c.saldo }; });
+  var vals = [0];
+  data.forEach(function(d){ vals.push(d.fixos+d.fat); vals.push(d.saldo); });
+  var maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
+  if(maxV===minV) maxV = minV + 1;
+  var plotW = W - padL - padR, plotH = H - padT - padB, n = data.length;
+  function y(v){ return padT + plotH * (1 - (v - minV)/(maxV - minV)); }
+  var band = plotW / n, barW = band*0.5, zeroY = y(0);
+
+  var html = '<line x1="'+padL+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+zeroY.toFixed(1)
+    +'" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3 3"/>';
+
+  data.forEach(function(d,i){
+    var cx = padL + band*i + band/2;
+    var yFix = y(d.fixos), hFix = Math.max(0, zeroY - yFix);
+    html += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+yFix.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hFix.toFixed(1)+'" rx="2" fill="#1661b8" opacity="0.9"/>';
+    var yTop = y(d.fixos + d.fat), hFat = Math.max(0, yFix - yTop);
+    html += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+yTop.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hFat.toFixed(1)+'" rx="2" fill="#6b21e8" opacity="0.9"/>';
+  });
+
+  var pts = data.map(function(d,i){ return (padL + band*i + band/2).toFixed(1)+','+y(d.saldo).toFixed(1); });
+  html += '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#00c896" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+
+  data.forEach(function(d,i){
+    var cx = padL + band*i + band/2;
+    html += '<circle cx="'+cx.toFixed(1)+'" cy="'+y(d.saldo).toFixed(1)+'" r="2.6" fill="'+(d.saldo<0?'#ff4d6d':'#00c896')+'"/>';
+    html += '<text x="'+cx.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">'+esc(d.mes.split('/')[0])+'</text>';
+  });
+
+  svg.innerHTML = html;
+}
+
+function drawMedias(){
+  var reais = D.hist.filter(function(m){ return !m.isNew; });
+  var el = document.getElementById('medias');
+  if(!reais.length){ el.innerHTML = '<div class="s-item wide"><div class="lbl">Médias</div><div class="val">—</div></div>'; return; }
+  var n = reais.length, sFat=0, sSaldo=0, sTot=0;
+  reais.forEach(function(m){ var c=calc(m); sFat+=c.fat; sSaldo+=c.saldo; sTot+=c.fixInvest+c.fat; });
+  el.innerHTML =
+     '<div class="s-item"><div class="lbl">Média faturas</div><div class="val">'+R(sFat/n)+'</div></div>'
+    +'<div class="s-item"><div class="lbl">Média saldo</div><div class="val">'+R(sSaldo/n)+'</div></div>'
+    +'<div class="s-item wide"><div class="lbl">Média gastos totais ('+n+' meses)</div><div class="val">'+R(sTot/n)+'</div></div>';
+}
+
+/* ============ HISTÓRICO ============ */
 function renderHist(){
   var el = document.getElementById('hist-list');
   if(!D.hist.length){
@@ -694,24 +756,25 @@ function renderHist(){
   for(var i=0; i<rev.length; i++){
     var m  = rev[i];
     var ri = D.hist.length-1-i;
-    var saldo = calc(m).saldo;
-    var sc = saldo>=0?'pos':'neg';
+    var c  = calc(m);
+    var sc = c.saldo>=0?'pos':'neg';
+
+    var cells = '', inputs = '';
+    for(var k=0;k<ns.length;k++){
+      var nm = ns[k], v = (m.faturas && m.faturas[nm]) || 0;
+      cells  += '<div class="h-cell"><div class="d-lbl">'+esc(nm)+'</div><div class="d-val">'+R(v)+'</div></div>';
+      inputs += '<div class="f-row"><label>'+esc(nm)+'</label>'
+        +'<input type="number" inputmode="decimal" class="ef-input" data-fat="'+esc(nm)+'" value="'+v+'" '
+        +'onclick="event.stopPropagation()" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>';
+    }
+
     html += '<div class="h-item" id="hi-'+ri+'" onclick="toggleEdit('+ri+')">'
       +'<div class="h-hdr">'
       +'<div><span class="h-mes">'+full(m.mesAno)+'</span>'+(m.isNew?'<span class="new-badge">NOVO</span>':'')+'</div>'
-      +'<span class="h-saldo '+sc+'">'+R(saldo)+'</span>'
+      +'<span class="h-saldo '+sc+'">'+R(c.saldo)+'</span>'
       +'</div>'
-      +'<div class="h-grid">'
-      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[0])+'</div><div class="d-val">'+R(m.nubank)+'</div></div>'
-      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[1])+'</div><div class="d-val">'+R(m.xp)+'</div></div>'
-      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[2])+'</div><div class="d-val">'+R(m.btg)+'</div></div>'
-      +'<div class="h-cell"><div class="d-lbl">'+esc(ns[3])+'</div><div class="d-val">'+R(m.pixDebito)+'</div></div>'
-      +'</div>'
-      +'<div class="e-form" id="ef-'+ri+'">'
-      +'<div class="f-row"><label>'+esc(ns[0])+'</label><input type="number" id="en-'+ri+'" value="'+(m.nubank||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
-      +'<div class="f-row"><label>'+esc(ns[1])+'</label><input type="number" id="ex-'+ri+'" value="'+(m.xp||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
-      +'<div class="f-row"><label>'+esc(ns[2])+'</label><input type="number" id="eb-'+ri+'" value="'+(m.btg||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
-      +'<div class="f-row"><label>'+esc(ns[3])+'</label><input type="number" id="ep-'+ri+'" value="'+(m.pixDebito||0)+'" inputmode="decimal" onclick="event.stopPropagation()"></div>'
+      +'<div class="h-grid">'+cells+'</div>'
+      +'<div class="e-form" id="ef-'+ri+'">'+inputs
       +'<button class="btn btn-primary" onclick="event.stopPropagation();saveMes('+ri+')">Salvar</button>'
       +'<button class="btn btn-ghost" onclick="event.stopPropagation();toggleEdit('+ri+')">Cancelar</button>'
       +'</div>'
@@ -734,49 +797,67 @@ function toggleEdit(ri){
   item.classList.toggle('editing', opening);
   D.openEdit = opening ? ri : null;
   if(opening){
-    setTimeout(function(){ form.querySelector('input').focus(); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 120);
+    setTimeout(function(){ var inp=form.querySelector('input'); if(inp) inp.focus(); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 120);
   }
 }
 
 async function saveMes(ri){
-  var m   = D.hist[ri];
-  var nu  = parseFloat(document.getElementById('en-'+ri).value)||0;
-  var xp  = parseFloat(document.getElementById('ex-'+ri).value)||0;
-  var btg = parseFloat(document.getElementById('eb-'+ri).value)||0;
-  var pix = parseFloat(document.getElementById('ep-'+ri).value)||0;
-
-  var sal    = D.cfg.salarioTotal   || m.salario     || 0;
-  var fix    = D.cfg.totalFixos     || m.fixosInvest || 0;
+  var m = D.hist[ri];
+  var form = document.getElementById('ef-'+ri);
+  var inputs = form.querySelectorAll('.ef-input');
+  var faturas = {}, fat = 0;
+  for(var j=0;j<inputs.length;j++){
+    var nm = inputs[j].getAttribute('data-fat');
+    var v  = parseFloat(inputs[j].value)||0;
+    faturas[nm] = v; fat += v;
+  }
+  var sal    = D.cfg.salarioTotal || m.salario || 0;
+  var fix    = D.cfg.totalFixos   || m.fixosInvest || 0;
   var invest = D.cfg.metaInvestimento || 0;
-  var fat    = nu+xp+btg+pix;
-  var saldo  = sal-fix-invest-fat;
+  var saldo  = sal - fix - invest - fat;
 
-  var payload = { mesAno:m.mesAno, salario:sal, fixosInvest:fix,
-    nubank:nu, xp:xp, btg:btg, pixDebito:pix, totalFaturas:fat, saldo:saldo };
+  var payload = { mesAno:m.mesAno, salario:sal, fixosInvest:fix, faturas:faturas, totalFaturas:fat, saldo:saldo };
   load(true);
   try {
     var res = await callAPI('save_mes', payload);
     if(res.error) throw new Error(res.error);
     D.hist[ri] = Object.assign({}, m, payload, {isNew:false});
     D.openEdit = null;
-    renderHist(); renderResumo();
+    renderAll();
     persistCache();
     toast('Salvo com sucesso!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
   load(false);
 }
 
+/* ============ CONFIG ============ */
 function renderCfg(){
-  var ns = nomes();
   document.getElementById('c-sal15').value = D.cfg.salario15||0;
   document.getElementById('c-sal30').value = D.cfg.salario30||0;
   document.getElementById('c-meta').value  = D.cfg.metaInvestimento||0;
-  document.getElementById('c-fat1').value  = ns[0];
-  document.getElementById('c-fat2').value  = ns[1];
-  document.getElementById('c-fat3').value  = ns[2];
-  document.getElementById('c-fat4').value  = ns[3];
+  renderNomesFatura(nomes());
   renderFixos(D.cfg.fixos||[]);
 }
+
+function renderNomesFatura(ns){
+  if(!D.cfg.nomesFatura) D.cfg.nomesFatura = ns.slice();
+  var html = '';
+  for(var i=0;i<ns.length;i++){
+    html += '<div class="fixo-row">'
+      +'<input type="text" value="'+esc(ns[i])+'" placeholder="Nome da fatura" oninput="D.cfg.nomesFatura['+i+']=this.value">'
+      +'<button class="btn-rm" onclick="rmFatura('+i+')">&times;</button>'
+      +'</div>';
+  }
+  document.getElementById('faturas-list').innerHTML = html;
+}
+function addFatura(){
+  if(!D.cfg.nomesFatura) D.cfg.nomesFatura=[];
+  D.cfg.nomesFatura.push('');
+  renderNomesFatura(D.cfg.nomesFatura);
+  var rows = document.querySelectorAll('#faturas-list .fixo-row');
+  if(rows.length) rows[rows.length-1].querySelector('input').focus();
+}
+function rmFatura(i){ D.cfg.nomesFatura.splice(i,1); renderNomesFatura(D.cfg.nomesFatura); }
 
 function renderFixos(fixos){
   var html = '';
@@ -784,21 +865,20 @@ function renderFixos(fixos){
     var f = fixos[i];
     html += '<div class="fixo-row">'
       +'<input type="text" value="'+esc(f.descricao||'')+'" placeholder="Descrição" oninput="D.cfg.fixos['+i+'].descricao=this.value">'
-      +'<input type="number" value="'+(f.valor||0)+'" placeholder="0,00" inputmode="decimal" oninput="D.cfg.fixos['+i+'].valor=parseFloat(this.value)||0">'
+      +'<input type="number" class="val-in" value="'+(f.valor||0)+'" placeholder="0,00" inputmode="decimal" '
+      +'oninput="D.cfg.fixos['+i+'].valor=parseFloat(this.value)||0" onfocus="ghostFocus(this)" onblur="ghostBlur(this)">'
       +'<button class="btn-rm" onclick="rmFixo('+i+')">&times;</button>'
       +'</div>';
   }
   document.getElementById('fixos-list').innerHTML = html;
 }
-
 function addFixo(){
   if(!D.cfg.fixos) D.cfg.fixos=[];
   D.cfg.fixos.push({descricao:'',valor:0});
   renderFixos(D.cfg.fixos);
-  var rows = document.querySelectorAll('.fixo-row');
+  var rows = document.querySelectorAll('#fixos-list .fixo-row');
   if(rows.length) rows[rows.length-1].querySelector('input').focus();
 }
-
 function rmFixo(i){ D.cfg.fixos.splice(i,1); renderFixos(D.cfg.fixos); }
 
 async function saveConfig(){
@@ -806,11 +886,8 @@ async function saveConfig(){
   var sal30 = parseFloat(document.getElementById('c-sal30').value)||0;
   var meta  = parseFloat(document.getElementById('c-meta').value)||0;
   var fixos = (D.cfg.fixos||[]).filter(function(f){ return f.descricao && f.valor>0; });
-  var fat1  = document.getElementById('c-fat1').value.trim() || NOMES_PADRAO[0];
-  var fat2  = document.getElementById('c-fat2').value.trim() || NOMES_PADRAO[1];
-  var fat3  = document.getElementById('c-fat3').value.trim() || NOMES_PADRAO[2];
-  var fat4  = document.getElementById('c-fat4').value.trim() || NOMES_PADRAO[3];
-  var nomesFatura = [fat1, fat2, fat3, fat4];
+  var nomesFatura = (D.cfg.nomesFatura||[]).map(function(x){ return String(x).trim(); }).filter(function(x){ return x; });
+  if(!nomesFatura.length) nomesFatura = FAT_PADRAO.slice();
 
   load(true);
   try {
@@ -818,7 +895,7 @@ async function saveConfig(){
     if(res.error) throw new Error(res.error);
     D.cfg = { salario15:sal15, salario30:sal30, metaInvestimento:meta, fixos:fixos, nomesFatura:nomesFatura,
       salarioTotal:sal15+sal30, totalFixos:fixos.reduce(function(s,f){return s+f.valor;},0) };
-    renderResumo(); renderHist();
+    renderAll();
     persistCache();
     toast('Configuração salva!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
@@ -836,14 +913,24 @@ function addProximoMes(){
     toast('Já existe entrada para '+full(prox),'inf'); return;
   }
   var sal=D.cfg.salarioTotal||0, fix=D.cfg.totalFixos||0;
-  D.hist.push({ mesAno:prox, salario:sal, fixosInvest:fix,
-    nubank:0, xp:0, btg:0, pixDebito:0, totalFaturas:0, saldo:sal-fix, isNew:true });
+  D.hist.push({ mesAno:prox, salario:sal, fixosInvest:fix, faturas:{}, totalFaturas:0, saldo:sal-fix, isNew:true });
   renderHist();
   toast(full(prox)+' adicionado','ok');
 }
 
+/* ============ INPUT: sombra do valor anterior ============ */
+function ghostFocus(el){
+  el.dataset.prev = el.value;
+  el.placeholder = (el.value===''?'0':el.value);
+  el.value = '';
+}
+function ghostBlur(el){
+  if(el.value===''){ el.value = el.dataset.prev || ''; }
+  el.dispatchEvent(new Event('input'));
+}
+
 function go(tab){
-  ['resumo','hist','cfg'].forEach(function(t){
+  ['resumo','graf','hist','cfg'].forEach(function(t){
     document.getElementById('s-'+t).classList.toggle('on', t===tab);
     document.getElementById('tb-'+t).classList.toggle('on', t===tab);
   });
@@ -858,6 +945,13 @@ function toast(msg,type){
   el.className = 'toast on '+(type||'inf');
   clearTimeout(_tt);
   _tt = setTimeout(function(){ el.classList.remove('on'); }, 3200);
+}
+
+async function refresh(){
+  var btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+  await init();
+  btn.classList.remove('spinning');
 }
 
 init();
