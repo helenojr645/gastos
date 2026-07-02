@@ -388,6 +388,7 @@ const API  = 'https://script.google.com/macros/s/AKfycbwL16iahBjbR0k8qzP4mWUhkBB
 const MES  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESF = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const NOMES_PADRAO = ['Nubank','XP','BTG','PIX/Débito'];
+const CACHE_KEY = 'gastos_cache_v1';
 
 var D = {
   hist: [],
@@ -451,30 +452,58 @@ async function refresh(){
   btn.classList.remove('spinning');
 }
 
+// ---- Cache local (stale-while-revalidate) ----
+function loadCache(){
+  try { var raw = localStorage.getItem(CACHE_KEY); return raw ? JSON.parse(raw) : null; }
+  catch(e){ return null; }
+}
+function saveCache(res){
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ historico:res.historico, config:res.config, ts:Date.now() })); }
+  catch(e){}
+}
+function persistCache(){ saveCache({ historico:D.hist, config:D.cfg }); }
+function setDot(ok){
+  var c = ok ? '#00c896' : '#ff4d6d';
+  document.getElementById('dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:'+c+';box-shadow:0 0 8px '+c;
+}
+
+// Processa uma resposta (do cache ou da rede) e renderiza, preservando o mês em foco.
+function applyData(res){
+  var viewing = (D.hist[D.idx]||{}).mesAno;
+  D.hist = (res.historico||[]).map(function(m){ m.mesAno=parseMesAno(m.mesAno); return m; })
+            .sort(function(a,b){ return toDate(a.mesAno)-toDate(b.mesAno); });
+  D.cfg  = fixCfg(res.config) || D.cfg;
+
+  var cur = mesAnoAtual();
+  var hasCur = D.hist.some(function(m){ return m.mesAno===cur; });
+  if(!hasCur){
+    var sal = D.cfg.salarioTotal||0, fix = D.cfg.totalFixos||0;
+    D.hist.push({ mesAno:cur, salario:sal, fixosInvest:fix,
+      nubank:0, xp:0, btg:0, pixDebito:0, totalFaturas:0, saldo:sal-fix, isNew:true });
+  }
+  D.idx = -1;
+  if(viewing) D.idx = D.hist.findIndex(function(m){ return m.mesAno===viewing; });
+  if(D.idx<0)  D.idx = D.hist.findIndex(function(m){ return m.mesAno===cur; });
+  if(D.idx<0)  D.idx = D.hist.length-1;
+
+  renderResumo(); renderHist(); renderCfg();
+}
+
 async function init(){
-  load(true);
+  var cached = loadCache(), hadCache = false;
+  if(cached){
+    try { applyData(cached); setDot(true); hadCache = true; } catch(e){}
+  }
+  if(!hadCache) load(true);
   try {
     var res = await callAPI('all');
     if(res.error) throw new Error(res.error);
-    D.hist = (res.historico||[]).map(function(m){ m.mesAno=parseMesAno(m.mesAno); return m; })
-              .sort(function(a,b){ return toDate(a.mesAno)-toDate(b.mesAno); });
-    D.cfg  = fixCfg(res.config) || D.cfg;
-
-    var cur = mesAnoAtual();
-    var hasCur = D.hist.some(function(m){ return m.mesAno===cur; });
-    if(!hasCur){
-      var sal = D.cfg.salarioTotal||0, fix = D.cfg.totalFixos||0;
-      D.hist.push({ mesAno:cur, salario:sal, fixosInvest:fix,
-        nubank:0, xp:0, btg:0, pixDebito:0, totalFaturas:0, saldo:sal-fix, isNew:true });
-    }
-    D.idx = D.hist.findIndex(function(m){ return m.mesAno===cur; });
-    if(D.idx<0) D.idx = D.hist.length-1;
-
-    renderResumo(); renderHist(); renderCfg();
-    document.getElementById('dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00c896;box-shadow:0 0 8px #00c896';
+    saveCache(res);
+    applyData(res);
+    setDot(true);
   } catch(e){
-    toast('Erro ao carregar: '+e.message,'err');
-    document.getElementById('dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d';
+    if(!hadCache) toast('Erro ao carregar: '+e.message,'err');
+    setDot(false);
   }
   load(false);
 }
@@ -668,6 +697,7 @@ async function saveMes(ri){
     D.hist[ri] = Object.assign({}, m, payload, {isNew:false});
     D.openEdit = null;
     renderHist(); renderResumo();
+    persistCache();
     toast('Salvo com sucesso!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
   load(false);
@@ -726,6 +756,7 @@ async function saveConfig(){
     D.cfg = { salario15:sal15, salario30:sal30, metaInvestimento:meta, fixos:fixos, nomesFatura:nomesFatura,
       salarioTotal:sal15+sal30, totalFixos:fixos.reduce(function(s,f){return s+f.valor;},0) };
     renderResumo(); renderHist();
+    persistCache();
     toast('Configuração salva!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
   load(false);
