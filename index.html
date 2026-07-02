@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Gastos">
 <meta name="theme-color" content="#080c18">
 <title>Gastos</title>
+<link rel="manifest" href="/gastos/manifest.json">
 <link rel="apple-touch-icon" id="ati">
 <script>
 (function(){
@@ -311,6 +312,15 @@ body::before{
       </div>
 
       <div class="card">
+        <div class="card-lbl">Evolução (últimos meses)</div>
+        <svg id="evo" viewBox="0 0 300 150" width="100%" style="display:block"></svg>
+        <div style="display:flex;gap:18px;margin-top:8px">
+          <div class="leg-item" style="margin-bottom:0"><div class="leg-dot" style="background:#6b21e8"></div><div class="leg-lbl">Faturas</div></div>
+          <div class="leg-item" style="margin-bottom:0"><div class="leg-dot" style="background:#00c896"></div><div class="leg-lbl">Saldo livre</div></div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-lbl">Faturas</div>
         <div class="s-grid" style="margin-bottom:0">
           <div class="s-item"><div class="lbl" id="lbl-f1">Fatura 1</div><div class="val" id="r-f1">R$ 0</div></div>
@@ -347,7 +357,7 @@ body::before{
       <div id="fixos-list"></div>
       <button class="btn-add" onclick="addFixo()">+ Adicionar fixo</button>
 
-      <div class="cfg-sep">Meta de Investimento</div>
+      <div class="cfg-sep">Investimento mensal (desconta do saldo)</div>
       <div class="f-row"><label>Valor</label><input type="number" id="c-meta" placeholder="0,00" inputmode="decimal"></div>
 
       <button class="btn btn-primary" onclick="saveConfig()">Salvar Configuração</button>
@@ -508,6 +518,17 @@ async function init(){
   load(false);
 }
 
+// Valores efetivos de um mês. O investimento (metaInvestimento) é sempre
+// descontado do saldo livre e somado ao card "Fixos + Invest".
+// m.fixosInvest = apenas fixos (legado); invest vem sempre da config atual.
+function calc(m){
+  var sal    = m.salario || D.cfg.salarioTotal || 0;
+  var fixos  = (m.fixosInvest || D.cfg.totalFixos) || 0;
+  var invest = D.cfg.metaInvestimento || 0;
+  var fat    = m.totalFaturas || 0;
+  return { sal:sal, fixos:fixos, invest:invest, fixInvest:fixos+invest, fat:fat, saldo:sal-fixos-invest-fat };
+}
+
 function renderResumo(){
   var h = D.hist, i = D.idx;
   if(!h.length) return;
@@ -519,10 +540,11 @@ function renderResumo(){
   document.getElementById('btn-prev').disabled = i<=0;
   document.getElementById('btn-next').disabled = i>=h.length-1;
 
-  var sal   = m.salario     || D.cfg.salarioTotal || 0;
-  var fix   = m.fixosInvest || D.cfg.totalFixos   || 0;
-  var fat   = m.totalFaturas || 0;
-  var saldo = sal - fix - fat;
+  var c     = calc(m);
+  var sal   = c.sal;
+  var fix   = c.fixInvest;
+  var fat   = c.fat;
+  var saldo = c.saldo;
 
   document.getElementById('r-sal').textContent   = R(sal);
   document.getElementById('r-fix').textContent   = R(fix);
@@ -563,6 +585,48 @@ function renderResumo(){
     var ptxt = pp!==null ? sign+pp+'%' : (df===0?'igual':'—');
     cmp.innerHTML = '<span class="badge '+cls+'">'+arr+' '+ptxt+'</span> em faturas vs '+full(prev.mesAno);
   } else { cmp.innerHTML = ''; }
+
+  drawEvolucao();
+}
+
+// Gráfico de evolução: barras = faturas, linha = saldo livre (últimos meses)
+function drawEvolucao(){
+  var svg = document.getElementById('evo');
+  if(!svg) return;
+  var months = D.hist.slice(-6);
+  if(months.length < 2){
+    svg.innerHTML = '<text x="150" y="72" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="11">Poucos dados para evolução</text>';
+    return;
+  }
+  var W=300, H=150, padL=8, padR=8, padT=14, padB=22;
+  var data = months.map(function(m){ var c=calc(m); return { mes:m.mesAno, fat:c.fat, saldo:c.saldo }; });
+  var vals = [0];
+  data.forEach(function(d){ vals.push(d.fat); vals.push(d.saldo); });
+  var maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
+  if(maxV===minV) maxV = minV + 1;
+  var plotW = W - padL - padR, plotH = H - padT - padB, n = data.length;
+  function y(v){ return padT + plotH * (1 - (v - minV)/(maxV - minV)); }
+  var band = plotW / n, barW = band*0.42, zeroY = y(0);
+
+  var html = '<line x1="'+padL+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+zeroY.toFixed(1)
+    +'" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3 3"/>';
+
+  data.forEach(function(d,i){
+    var cx = padL + band*i + band/2, yv = y(d.fat), hh = Math.max(0, zeroY - yv);
+    html += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+yv.toFixed(1)+'" width="'+barW.toFixed(1)
+      +'" height="'+hh.toFixed(1)+'" rx="2" fill="#6b21e8" opacity="0.85"/>';
+  });
+
+  var pts = data.map(function(d,i){ return (padL + band*i + band/2).toFixed(1)+','+y(d.saldo).toFixed(1); });
+  html += '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#00c896" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+
+  data.forEach(function(d,i){
+    var cx = padL + band*i + band/2;
+    html += '<circle cx="'+cx.toFixed(1)+'" cy="'+y(d.saldo).toFixed(1)+'" r="2.6" fill="'+(d.saldo<0?'#ff4d6d':'#00c896')+'"/>';
+    html += '<text x="'+cx.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">'+esc(d.mes.split('/')[0])+'</text>';
+  });
+
+  svg.innerHTML = html;
 }
 
 function navMes(d){ var ni=D.idx+d; if(ni<0||ni>=D.hist.length) return; D.idx=ni; renderResumo(); }
@@ -630,9 +694,7 @@ function renderHist(){
   for(var i=0; i<rev.length; i++){
     var m  = rev[i];
     var ri = D.hist.length-1-i;
-    var mSal = m.salario || D.cfg.salarioTotal || 0;
-    var mFix = m.fixosInvest || D.cfg.totalFixos || 0;
-    var saldo = mSal - mFix - (m.totalFaturas||0);
+    var saldo = calc(m).saldo;
     var sc = saldo>=0?'pos':'neg';
     html += '<div class="h-item" id="hi-'+ri+'" onclick="toggleEdit('+ri+')">'
       +'<div class="h-hdr">'
@@ -683,10 +745,11 @@ async function saveMes(ri){
   var btg = parseFloat(document.getElementById('eb-'+ri).value)||0;
   var pix = parseFloat(document.getElementById('ep-'+ri).value)||0;
 
-  var sal   = D.cfg.salarioTotal   || m.salario     || 0;
-  var fix   = D.cfg.totalFixos     || m.fixosInvest || 0;
-  var fat   = nu+xp+btg+pix;
-  var saldo = sal-fix-fat;
+  var sal    = D.cfg.salarioTotal   || m.salario     || 0;
+  var fix    = D.cfg.totalFixos     || m.fixosInvest || 0;
+  var invest = D.cfg.metaInvestimento || 0;
+  var fat    = nu+xp+btg+pix;
+  var saldo  = sal-fix-invest-fat;
 
   var payload = { mesAno:m.mesAno, salario:sal, fixosInvest:fix,
     nubank:nu, xp:xp, btg:btg, pixDebito:pix, totalFaturas:fat, saldo:saldo };
@@ -798,6 +861,13 @@ function toast(msg,type){
 }
 
 init();
+
+// PWA: service worker (shell offline + instalável)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/gastos/sw.js').catch(function(){});
+  });
+}
 </script>
 </body>
 </html>
