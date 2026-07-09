@@ -1,6 +1,6 @@
 // Service worker do Controle de Gastos
 // Cacheia o "shell" (cache-first) e nunca cacheia a API do Apps Script.
-var CACHE = 'gastos-shell-v2';
+var CACHE = 'gastos-shell-v3';
 var SHELL = [
   '/gastos/',
   '/gastos/index.html',
