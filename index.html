@@ -126,6 +126,25 @@ body::before{
 .badge.dn{background:rgba(0,200,150,.18);color:var(--green)}
 .badge.eq{background:rgba(255,255,255,.1);color:var(--muted)}
 
+/* a receber */
+.receber-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.receber-row .val{font-size:20px;font-weight:700}
+.chk-recebido{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+.chk-recebido input{width:18px;height:18px;accent-color:var(--green);cursor:pointer}
+.receber-info{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.6}
+.receber-info b{color:var(--text)}
+.receber-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--green);background:rgba(0,200,150,.12);padding:4px 10px;border-radius:20px}
+
+/* controle de recebimentos (Gráficos) */
+.receb-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.receb-row:last-child{border-bottom:none}
+.receb-mes{font-size:13px}
+.receb-right{display:flex;align-items:center;gap:10px}
+.receb-val{font-size:13px;font-weight:600}
+.receb-status{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.receb-status.pago{color:var(--green);background:rgba(0,200,150,.12)}
+.receb-status.pend{color:var(--orange);background:rgba(255,149,0,.12)}
+
 /* historico */
 .h-item{
   background:var(--glass);border:1px solid var(--glass-b);border-radius:18px;
@@ -292,6 +311,17 @@ body::before{
         <div class="comp" id="comp"></div>
       </div>
 
+      <div class="card" id="receber-card" style="display:none">
+        <div class="card-lbl">A receber (namorada)</div>
+        <div class="receber-row">
+          <div class="val" id="r-receber-valor">R$ 0</div>
+          <label class="chk-recebido">
+            <input type="checkbox" id="r-receber-chk" onchange="toggleRecebido()"> Recebido
+          </label>
+        </div>
+        <div class="receber-info" id="r-receber-info"></div>
+      </div>
+
       <div class="card">
         <div class="card-lbl">Faturas</div>
         <div class="s-grid" id="r-fat-grid" style="margin-bottom:0"></div>
@@ -350,6 +380,12 @@ body::before{
       <div class="card">
         <div class="card-lbl">Médias mensais</div>
         <div class="s-grid" id="medias" style="margin-bottom:0"></div>
+      </div>
+
+      <div class="card" id="receb-card" style="display:none">
+        <div class="card-lbl">Controle de recebimentos (namorada)</div>
+        <div class="s-item wide" id="receb-total" style="margin-bottom:10px"></div>
+        <div id="receb-list"></div>
       </div>
     </div>
   </section>
@@ -545,12 +581,18 @@ async function init(){
 function fatTotal(m){ var f=m.faturas||{}, s=0; for(var k in f){ s+=Number(f[k])||0; } return s; }
 
 // Valores efetivos do mês. Investimento (metaInvestimento) sempre desconta do saldo.
+// aReceber (valor que a namorada deve) só entra no saldo quando m.recebido=true.
 function calc(m){
-  var sal    = m.salario || D.cfg.salarioTotal || 0;
-  var fixos  = (m.fixosInvest || D.cfg.totalFixos) || 0;
-  var invest = D.cfg.metaInvestimento || 0;
-  var fat    = fatTotal(m);
-  return { sal:sal, fixos:fixos, invest:invest, fixInvest:fixos+invest, fat:fat, saldo:sal-fixos-invest-fat };
+  var sal      = m.salario || D.cfg.salarioTotal || 0;
+  var fixos    = (m.fixosInvest || D.cfg.totalFixos) || 0;
+  var invest   = D.cfg.metaInvestimento || 0;
+  var fat      = fatTotal(m);
+  var aReceber = m.aReceber || 0;
+  var recebido = !!m.recebido;
+  var saldoBase = sal-fixos-invest-fat;
+  var saldo = recebido ? saldoBase+aReceber : saldoBase;
+  return { sal:sal, fixos:fixos, invest:invest, fixInvest:fixos+invest, fat:fat,
+           saldoBase:saldoBase, saldo:saldo, aReceber:aReceber, recebido:recebido };
 }
 
 function renderResumo(){
@@ -592,6 +634,21 @@ function renderResumo(){
     html += '<div class="s-item"><div class="lbl">'+esc(ns[k])+'</div><div class="val">'+R(v)+'</div></div>';
   }
   grid.innerHTML = html || '<div class="s-item wide"><div class="lbl">Sem faturas</div><div class="val">—</div></div>';
+
+  var rcCard = document.getElementById('receber-card');
+  if(c.aReceber>0){
+    rcCard.style.display = '';
+    document.getElementById('r-receber-valor').textContent = R(c.aReceber);
+    document.getElementById('r-receber-chk').checked = c.recebido;
+    var info = document.getElementById('r-receber-info');
+    if(c.recebido){
+      info.innerHTML = '<span class="receber-badge">&#10003; Recebido — já somado ao saldo deste mês</span>';
+    } else {
+      info.innerHTML = 'Se receber: <b>'+R(c.saldoBase+c.aReceber)+'</b> de saldo &nbsp;·&nbsp; Se não receber: <b>'+R(c.saldoBase)+'</b> (saldo atual)';
+    }
+  } else {
+    rcCard.style.display = 'none';
+  }
 }
 
 function navMes(d){ var ni=D.idx+d; if(ni<0||ni>=D.hist.length) return; D.idx=ni; renderResumo(); renderGraficos(); }
@@ -616,6 +673,31 @@ function renderGraficos(){
   drawDistribuicao(m, ns);
   drawEvolucao();
   drawMedias();
+  renderRecebiveis();
+}
+
+// Lista de controle: quais meses têm valor a receber lançado, e o status (pago/pendente).
+function renderRecebiveis(){
+  var card = document.getElementById('receb-card');
+  var meses = D.hist.filter(function(m){ return (m.aReceber||0) > 0; }).slice().reverse();
+  if(!meses.length){ card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  var pendente = meses.filter(function(m){ return !m.recebido; }).reduce(function(s,m){ return s+m.aReceber; }, 0);
+  var totalEl = document.getElementById('receb-total');
+  totalEl.className = 's-item wide '+(pendente>0?'neg':'pos');
+  totalEl.innerHTML = '<div class="lbl">Total pendente</div><div class="val">'+R(pendente)+'</div>';
+
+  var html = '';
+  meses.forEach(function(m){
+    var pago = !!m.recebido;
+    html += '<div class="receb-row">'
+      +'<span class="receb-mes">'+full(m.mesAno)+'</span>'
+      +'<span class="receb-right"><span class="receb-val">'+R(m.aReceber)+'</span>'
+      +'<span class="receb-status '+(pago?'pago':'pend')+'">'+(pago?'&#10003; Recebido':'Pendente')+'</span></span>'
+      +'</div>';
+  });
+  document.getElementById('receb-list').innerHTML = html;
 }
 
 function drawPie(fix, fat, saldo){
@@ -767,6 +849,9 @@ function renderHist(){
         +'<input type="number" inputmode="decimal" class="ef-input" data-fat="'+esc(nm)+'" value="'+v+'" '
         +'onclick="event.stopPropagation()" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>';
     }
+    inputs += '<div class="f-row"><label>A receber</label>'
+      +'<input type="number" inputmode="decimal" class="ef-input-receber" value="'+(m.aReceber||0)+'" '
+      +'onclick="event.stopPropagation()" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>';
 
     html += '<div class="h-item" id="hi-'+ri+'" onclick="toggleEdit('+ri+')">'
       +'<div class="h-hdr">'
@@ -811,12 +896,16 @@ async function saveMes(ri){
     var v  = parseFloat(inputs[j].value)||0;
     faturas[nm] = v; fat += v;
   }
-  var sal    = D.cfg.salarioTotal || m.salario || 0;
-  var fix    = D.cfg.totalFixos   || m.fixosInvest || 0;
-  var invest = D.cfg.metaInvestimento || 0;
-  var saldo  = sal - fix - invest - fat;
+  var sal      = D.cfg.salarioTotal || m.salario || 0;
+  var fix      = D.cfg.totalFixos   || m.fixosInvest || 0;
+  var invest   = D.cfg.metaInvestimento || 0;
+  var saldo    = sal - fix - invest - fat;
+  var receberEl = form.querySelector('.ef-input-receber');
+  var aReceber  = receberEl ? (parseFloat(receberEl.value)||0) : (m.aReceber||0);
 
-  var payload = { mesAno:m.mesAno, salario:sal, fixosInvest:fix, faturas:faturas, totalFaturas:fat, saldo:saldo };
+  // recebido não é editado aqui (só pelo checkbox no Resumo) — mantém o valor atual do mês.
+  var payload = { mesAno:m.mesAno, salario:sal, fixosInvest:fix, faturas:faturas, totalFaturas:fat, saldo:saldo,
+                   aReceber:aReceber, recebido:!!m.recebido };
   load(true);
   try {
     var res = await callAPI('save_mes', payload);
@@ -827,6 +916,29 @@ async function saveMes(ri){
     persistCache();
     toast('Salvo com sucesso!','ok');
   } catch(e){ toast('Erro: '+e.message,'err'); }
+  load(false);
+}
+
+// Toggle do checkbox "Recebido" no Resumo — reenvia o mês inteiro só trocando recebido.
+async function toggleRecebido(){
+  var m = D.hist[D.idx];
+  var chk = document.getElementById('r-receber-chk');
+  var recebido = chk.checked;
+  var c = calc(m);
+  var payload = { mesAno:m.mesAno, salario:c.sal, fixosInvest:c.fixInvest-c.invest, faturas:m.faturas,
+                   totalFaturas:c.fat, saldo:c.saldoBase, aReceber:c.aReceber, recebido:recebido };
+  load(true);
+  try {
+    var res = await callAPI('save_mes', payload);
+    if(res.error) throw new Error(res.error);
+    D.hist[D.idx] = Object.assign({}, m, payload, {isNew:false});
+    renderAll();
+    persistCache();
+    toast(recebido ? 'Marcado como recebido!' : 'Desmarcado.', 'ok');
+  } catch(e){
+    toast('Erro: '+e.message,'err');
+    chk.checked = !recebido;
+  }
   load(false);
 }
 
