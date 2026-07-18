@@ -301,6 +301,7 @@ body::before{
         <div class="s-item"><div class="lbl">Salário</div><div class="val" id="r-sal">R$ 0</div></div>
         <div class="s-item"><div class="lbl">Fixos + Invest</div><div class="val" id="r-fix">R$ 0</div></div>
         <div class="s-item"><div class="lbl">Total Faturas</div><div class="val" id="r-fat">R$ 0</div></div>
+        <div class="s-item" id="r-sobra-card" style="display:none"><div class="lbl">Sobra mês anterior</div><div class="val" id="r-sobra">R$ 0</div></div>
         <div class="s-item wide" id="r-saldo-card"><div class="lbl">Saldo Livre</div><div class="val" id="r-saldo">R$ 0</div></div>
       </div>
 
@@ -582,6 +583,7 @@ function fatTotal(m){ var f=m.faturas||{}, s=0; for(var k in f){ s+=Number(f[k])
 
 // Valores efetivos do mês. Investimento (metaInvestimento) sempre desconta do saldo.
 // aReceber (valor que a namorada deve) só entra no saldo quando m.recebido=true.
+// sobraAnterior (dinheiro que já sobrou do mês passado) sempre soma ao saldo.
 function calc(m){
   var sal      = m.salario || D.cfg.salarioTotal || 0;
   var fixos    = (m.fixosInvest || D.cfg.totalFixos) || 0;
@@ -589,10 +591,11 @@ function calc(m){
   var fat      = fatTotal(m);
   var aReceber = m.aReceber || 0;
   var recebido = !!m.recebido;
-  var saldoBase = sal-fixos-invest-fat;
+  var sobraAnterior = m.sobraAnterior || 0;
+  var saldoBase = sal-fixos-invest-fat+sobraAnterior;
   var saldo = recebido ? saldoBase+aReceber : saldoBase;
   return { sal:sal, fixos:fixos, invest:invest, fixInvest:fixos+invest, fat:fat,
-           saldoBase:saldoBase, saldo:saldo, aReceber:aReceber, recebido:recebido };
+           saldoBase:saldoBase, saldo:saldo, aReceber:aReceber, recebido:recebido, sobraAnterior:sobraAnterior };
 }
 
 function renderResumo(){
@@ -608,6 +611,8 @@ function renderResumo(){
   document.getElementById('r-sal').textContent   = R(c.sal);
   document.getElementById('r-fix').textContent   = R(c.fixInvest);
   document.getElementById('r-fat').textContent   = R(c.fat);
+  document.getElementById('r-sobra-card').style.display = c.sobraAnterior>0 ? '' : 'none';
+  document.getElementById('r-sobra').textContent = R(c.sobraAnterior);
   document.getElementById('r-saldo').textContent = R(c.saldo);
   document.getElementById('r-saldo-card').className = 's-item wide '+(c.saldo>=0?'pos':'neg');
 
@@ -852,6 +857,9 @@ function renderHist(){
     inputs += '<div class="f-row"><label>A receber</label>'
       +'<input type="number" inputmode="decimal" class="ef-input-receber" value="'+(m.aReceber||0)+'" '
       +'onclick="event.stopPropagation()" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>';
+    inputs += '<div class="f-row"><label>Sobra mês anterior</label>'
+      +'<input type="number" inputmode="decimal" class="ef-input-sobra" value="'+(m.sobraAnterior||0)+'" '
+      +'onclick="event.stopPropagation()" onfocus="ghostFocus(this)" onblur="ghostBlur(this)"></div>';
 
     html += '<div class="h-item" id="hi-'+ri+'" onclick="toggleEdit('+ri+')">'
       +'<div class="h-hdr">'
@@ -899,13 +907,15 @@ async function saveMes(ri){
   var sal      = D.cfg.salarioTotal || m.salario || 0;
   var fix      = D.cfg.totalFixos   || m.fixosInvest || 0;
   var invest   = D.cfg.metaInvestimento || 0;
-  var saldo    = sal - fix - invest - fat;
   var receberEl = form.querySelector('.ef-input-receber');
   var aReceber  = receberEl ? (parseFloat(receberEl.value)||0) : (m.aReceber||0);
+  var sobraEl   = form.querySelector('.ef-input-sobra');
+  var sobraAnterior = sobraEl ? (parseFloat(sobraEl.value)||0) : (m.sobraAnterior||0);
+  var saldo    = sal - fix - invest - fat + sobraAnterior;
 
   // recebido não é editado aqui (só pelo checkbox no Resumo) — mantém o valor atual do mês.
   var payload = { mesAno:m.mesAno, salario:sal, fixosInvest:fix, faturas:faturas, totalFaturas:fat, saldo:saldo,
-                   aReceber:aReceber, recebido:!!m.recebido };
+                   aReceber:aReceber, recebido:!!m.recebido, sobraAnterior:sobraAnterior };
   load(true);
   try {
     var res = await callAPI('save_mes', payload);
@@ -926,7 +936,7 @@ async function toggleRecebido(){
   var recebido = chk.checked;
   var c = calc(m);
   var payload = { mesAno:m.mesAno, salario:c.sal, fixosInvest:c.fixInvest-c.invest, faturas:m.faturas,
-                   totalFaturas:c.fat, saldo:c.saldoBase, aReceber:c.aReceber, recebido:recebido };
+                   totalFaturas:c.fat, saldo:c.saldoBase, aReceber:c.aReceber, recebido:recebido, sobraAnterior:c.sobraAnterior };
   load(true);
   try {
     var res = await callAPI('save_mes', payload);
