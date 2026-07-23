@@ -785,13 +785,14 @@ function drawEvolucao(){
     svg.innerHTML = '<text x="150" y="72" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="11">Poucos dados para evolução</text>';
     return;
   }
-  var W=300, H=150, padL=8, padR=8, padT=14, padB=22;
+  var W=300, H=150, padL=8, padR=8, padT=24, padB=22;
   var data = months.map(function(m){ var c=calc(m); return { mes:m.mesAno, fixos:c.fixInvest, fat:c.fat, saldo:c.saldo }; });
   var vals = [0];
   data.forEach(function(d){ vals.push(d.fixos+d.fat); vals.push(d.saldo); });
   var maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
   if(maxV===minV) maxV = minV + 1;
   var plotW = W - padL - padR, plotH = H - padT - padB, n = data.length;
+  function Rc(v){ var neg=v<0, a=Math.abs(v); var s=a>=1000?(a/1000).toFixed(1)+'k':Math.round(a).toString(); return (neg?'-':'')+'R$'+s; }
   function y(v){ return padT + plotH * (1 - (v - minV)/(maxV - minV)); }
   var band = plotW / n, barW = band*0.5, zeroY = y(0);
 
@@ -804,14 +805,18 @@ function drawEvolucao(){
     html += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+yFix.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hFix.toFixed(1)+'" rx="2" fill="#1661b8" opacity="0.9"/>';
     var yTop = y(d.fixos + d.fat), hFat = Math.max(0, yFix - yTop);
     html += '<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+yTop.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hFat.toFixed(1)+'" rx="2" fill="#6b21e8" opacity="0.9"/>';
+    var totLbl = Math.min(yFix, yTop) - 3;
+    html += '<text x="'+cx.toFixed(1)+'" y="'+totLbl.toFixed(1)+'" text-anchor="middle" fill="rgba(255,255,255,0.55)" font-size="7.5">'+esc(Rc(d.fixos+d.fat))+'</text>';
   });
 
   var pts = data.map(function(d,i){ return (padL + band*i + band/2).toFixed(1)+','+y(d.saldo).toFixed(1); });
   html += '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#00c896" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
 
   data.forEach(function(d,i){
-    var cx = padL + band*i + band/2;
-    html += '<circle cx="'+cx.toFixed(1)+'" cy="'+y(d.saldo).toFixed(1)+'" r="2.6" fill="'+(d.saldo<0?'#ff4d6d':'#00c896')+'"/>';
+    var cx = padL + band*i + band/2, cy = y(d.saldo);
+    html += '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="2.6" fill="'+(d.saldo<0?'#ff4d6d':'#00c896')+'"/>';
+    var saldoY = ((H-padB)-cy > 14) ? cy+11 : cy-7;
+    html += '<text x="'+cx.toFixed(1)+'" y="'+saldoY.toFixed(1)+'" text-anchor="middle" fill="'+(d.saldo<0?'#ff4d6d':'#00c896')+'" font-size="7.5" font-weight="700">'+esc(Rc(d.saldo))+'</text>';
     html += '<text x="'+cx.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">'+esc(d.mes.split('/')[0])+'</text>';
   });
 
